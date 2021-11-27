@@ -9,6 +9,9 @@ __pycache__/
 # Secret files
 /clone_twitter/secrets.json
 
+# Static files
+static/
+
 # Distribution / packaging
 .Python
 build/
