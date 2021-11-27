@@ -10,7 +10,7 @@ __pycache__/
 /clone_twitter/secrets.json
 
 # Static files
-static/
+/clone_twitter/static/
 
 # Distribution / packaging
 .Python
