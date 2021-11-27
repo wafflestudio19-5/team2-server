@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Secret files
+/clone_twitter/secrets.json
+
+# Static files
+/clone_twitter/static/
+
 # Distribution / packaging
 .Python
 build/
