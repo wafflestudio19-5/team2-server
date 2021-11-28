@@ -58,9 +58,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_jwt',
     'rest_framework.authtoken',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -69,6 +71,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# 이후 frontend host를 알게 되면 이 값 False로 하고 Whitelist 지정
+CORS_ORIGIN_ALLOW_ALL = True
 
 ROOT_URLCONF = 'twitter.urls'
 
@@ -99,14 +104,16 @@ WSGI_APPLICATION = 'twitter.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+DB_PASSWORD = get_secret("DATABASE")
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'localhost',   
+        'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',   
         'PORT': 3306,
         'NAME': 'twitter_backend',  
         'USER': 'twitter-backend',
-        'PASSWORD': 'team2db',
+        'PASSWORD': DB_PASSWORD,
     }
 }
 
