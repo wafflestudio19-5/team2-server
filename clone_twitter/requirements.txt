@@ -7,4 +7,6 @@ django-debug-toolbar==2.2
 djangorestframework==3.11.1
 djangorestframework-jwt
 django-rest-authtoken
+drf-yasg # swagger
+django-cors-headers
 
