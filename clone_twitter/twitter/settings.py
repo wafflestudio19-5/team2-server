@@ -111,7 +111,7 @@ DB_PASSWORD = get_secret("DATABASE")
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',   
+        'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
         'PORT': 3306,
         'NAME': 'twitter_backend',  
         'USER': 'twitter-backend',
@@ -189,5 +189,7 @@ JWT_AUTH = {
     'JWT_EXPIRATION_DELTA': datetime.timedelta(hours=2),  # 유효기간 설정
     'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=3),  # JWT 토큰 갱신 유효기간
 }
+
+AUTH_USER_MODEL = 'user.User'
 
 SITE_ID = 1
