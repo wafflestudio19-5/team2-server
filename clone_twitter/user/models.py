@@ -34,27 +34,30 @@ class CustomUserManager(BaseUserManager):
 
         return  self._create_user(email, password, **extra_fields)
 
-
-
-
 class User(AbstractBaseUser, PermissionsMixin):
 
     EMAIL_FIELD = 'email'
-    USERNAME_FIELD = 'user_id'  #tmp
+    USERNAME_FIELD = 'user_id'  #TODO
 
     user_id = models.CharField(max_length=20, unique=True, db_index=True)  # ex) @waffle -> user_id = waffle
     username = models.CharField(max_length=20, unique=True)  # nickname ex) Waffle @1234 -> Waffle
     email = models.EmailField(max_length=100, unique=True)
 
-    phone_number_pattern = RegexValidator(regex=r"^\+?1?\d{8,15}$")  # another option: 1)validation with drf 2)external library
-    phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True)
+    phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{3}-[\d]{3}")  # another option: 1)validation with drf 2)external library
+    phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)  #TODO null=True
 
     # profile related fields
-    profile_img = models.ImageField()  # TODO connect to S3. (we store only urls/key in DB)
-    header_img = models.ImageField()
+    profile_img = models.ImageField(null=True)  # TODO connect to S3. (we store only urls/key in DB)
+    header_img = models.ImageField(null=True)
     bio = models.CharField(max_length=255, blank=True)
-    birth_date = models.DateField()
+    birth_date = models.DateField(null=True)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
     allow_notification = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     # Q. lanaguage, url field?
+
+    objects = CustomUserManager()
+
+    def clean_phone_number(self):
+        if self.phone_number == "":
+            self.phone_number = None
