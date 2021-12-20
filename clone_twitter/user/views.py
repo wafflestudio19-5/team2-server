@@ -30,10 +30,10 @@ class EmailSignUpView(APIView):   #signup with email
             'email': openapi.Schema(type=openapi.FORMAT_EMAIL, description='email'),
             'password': openapi.Schema(type=openapi.TYPE_STRING, description='password'),
             'username': openapi.Schema(type=openapi.TYPE_STRING, description='username'),
-            'profile_img': openapi.Schema(type=openapi.TYPE_FILE, description='username'),
-            'header_img': openapi.Schema(type=openapi.TYPE_FILE, description='username'),
-            'bio': openapi.Schema(type=openapi.TYPE_STRING, description='username'),
-            'birth_date': openapi.Schema(type=openapi.FORMAT_DATETIME, description='username'),
+            'profile_img': openapi.Schema(type=openapi.TYPE_FILE, description='profile_img'),
+            'header_img': openapi.Schema(type=openapi.TYPE_FILE, description='header_img'),
+            'bio': openapi.Schema(type=openapi.TYPE_STRING, description='bio'),
+            'birth_date': openapi.Schema(type=openapi.FORMAT_DATETIME, description='birth_date'),
         }
     ))
 
@@ -41,10 +41,11 @@ class EmailSignUpView(APIView):   #signup with email
 
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         try:
             user, jwt_token = serializer.save()
         except IntegrityError:
-            return Response(status=status.HTTP_409_CONFLICT, data='integrityError....')
+            return Response(status=status.HTTP_409_CONFLICT)
         return Response({'token': jwt_token}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id

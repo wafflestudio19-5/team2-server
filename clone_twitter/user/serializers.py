@@ -51,7 +51,7 @@ class UserCreateSerializer(serializers.Serializer):
         phone_number = validated_data.get('phone_number')
         profile_img = validated_data.get('profile_img')
         header_img = validated_data.get('header_img')
-        bio = validated_data.get('bio')
+        bio = validated_data.pop('bio', '')
         birth_date = validated_data.get('birth_date')
         allow_notification = validated_data.get('allow_notification')
 

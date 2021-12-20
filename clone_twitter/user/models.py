@@ -17,10 +17,8 @@ class CustomUserManager(BaseUserManager):
         return user
 
     def create_user(self, email, password=None, **extra_fields):
-
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
-
         return self._create_user(email, password, **extra_fields)
 
 
@@ -47,14 +45,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)  #TODO null=True
 
     # profile related fields
-    profile_img = models.ImageField(null=True)  # TODO connect to S3. (we store only urls/key in DB)
-    header_img = models.ImageField(null=True)
+    profile_img = models.ImageField(null=True, blank=True)  # TODO connect to S3. (we store only urls/key in DB)
+    header_img = models.ImageField(null=True, blank=True)
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
     allow_notification = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     # Q. lanaguage, url field?
+    is_superuser = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
 
     objects = CustomUserManager()
 
