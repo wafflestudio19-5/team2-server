@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
@@ -57,3 +58,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
 
     objects = CustomUserManager()
+
+class Follow(models.Model):
+    follower = models.ForeignKey(get_user_model(), related_name='follower', on_delete=models.CASCADE)
+    following = models.ForeignKey(get_user_model(), related_name='following', on_delete=models.CASCADE)
+
+    class Meta:
+        # no duplicated follow relation
+        constraints = [models.UniqueConstraint(fields=['follower', 'following'], name='follower-following relation')]

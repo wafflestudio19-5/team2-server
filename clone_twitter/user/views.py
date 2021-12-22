@@ -3,7 +3,7 @@ from rest_framework import status, permissions
 from rest_framework.views import Response, APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer
+from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer
 from django.db import IntegrityError
 # Create your views here.
 
@@ -42,10 +42,10 @@ class EmailSignUpView(APIView):   #signup with email
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # try:
-        user, jwt_token = serializer.save()
-        # except IntegrityError:
-        #    return Response(status=status.HTTP_409_CONFLICT)
+        try:
+            user, jwt_token = serializer.save()
+        except IntegrityError:
+            return Response(status=status.HTTP_409_CONFLICT)
         return Response({'token': jwt_token}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id
@@ -60,7 +60,6 @@ class UserLoginView(APIView): #login with user_id
     ))
 
     def post(self, request):
-
         serializer = UserLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data['token']
@@ -68,3 +67,16 @@ class UserLoginView(APIView): #login with user_id
         return Response({'success': True, 'token': token}, status=status.HTTP_200_OK)
 
 # TODO: Logout.. expire token and add blacklist.. ?
+
+class UserFollowView(APIView):
+    permission_classes = (permissions.AllowAny,)  # later change to Isauthenticated
+
+    def post(self, request):
+        serializer = FollowSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        try:
+            follow_relation = serializer.save()
+        except IntegrityError:
+            return Response(status=status.HTTP_409_CONFLICT, data='user already follows followee')
+        return Response(status=status.HTTP_201_CREATED) #TODO: recommend user
+

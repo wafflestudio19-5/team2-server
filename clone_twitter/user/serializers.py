@@ -3,6 +3,7 @@ from rest_framework_jwt.settings import api_settings
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
 import re
+from user.models import Follow
 
 # jwt token setting
 User = get_user_model()
@@ -91,3 +92,24 @@ class UserLoginSerializer(serializers.Serializer):
             'user_id': user.user_id,
             'token': jwt_token_of(user)
         }
+
+class FollowSerializer(serializers.Serializer):
+    user_id = serializers.CharField(max_length=20, required=True)
+
+    def validate(self, data):
+        target_user_id = data.get('user_id')
+        me = self.context['request'].user
+        if not target_user_id:
+            raise serializers.ValidationError("specify target user_id.")
+        if not User.objects.filter(user_id=target_user_id).exists():
+            raise serializers.ValidationError("target user does not exist")
+        if me.user_id == target_user_id:
+            raise serializers.ValidationError("cannot follow myself")
+        return data
+
+    def create(self, validated_data):
+        follower = self.context['request'].user
+        following = User.objects.get(user_id=validated_data['user_id'])
+        follow_relation = Follow.objects.create(follower=follower, following=following)
+        return follow_relation
+
