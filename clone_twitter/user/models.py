@@ -41,7 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=20, unique=True)  # nickname ex) Waffle @1234 -> Waffle
     email = models.EmailField(max_length=100, unique=True)
 
-    phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{3}-[\d]{3}")  # another option: 1)validation with drf 2)external library
+    phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{4}-[\d]{4}")  # another option: 1)validation with drf 2)external library
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)  #TODO null=True
 
     # profile related fields
@@ -57,7 +57,3 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
 
     objects = CustomUserManager()
-
-    def clean_phone_number(self):
-        if self.phone_number == "":
-            self.phone_number = None

@@ -2,6 +2,7 @@ from django.contrib.auth.models import update_last_login
 from rest_framework_jwt.settings import api_settings
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
+import re
 
 # jwt token setting
 User = get_user_model()
@@ -31,7 +32,7 @@ class UserCreateSerializer(serializers.Serializer):
         user_id = data.get('user_id')
         username = data.get('username')
         email = data.get('email')
-        phone_number = data.get('phone_number')
+        phone_number = data.get('phone_number', '')
 
         if User.objects.filter(user_id=user_id).exists():
             raise serializers.ValidationError("same user_id exsits already")
@@ -39,16 +40,25 @@ class UserCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("same username exsits already")
         if email and User.objects.filter(email=email).exists():
             raise serializers.ValidationError("same email exsits already")
+        if phone_number == '':  # since '' regarded as duplicate entry in db
+            data.update({'phone_number': None})
         if phone_number and User.objects.filter(phone_number=phone_number).exists():
             raise serializers.ValidationError("same phonenumber exsits already")
+        if phone_number and not self.is_valid_phone_num(phone_number):
+            raise serializers.ValidationError("invalid phone number pattern")
         return data
+
+    def is_valid_phone_num(self, phone_number):
+        if re.match(r"[\d]{3}-[\d]{4}-[\d]{4}", phone_number):
+            return True
+        return False
 
     def create(self, validated_data):
         username = validated_data.get('username')
         email = validated_data.get('email')
         password = validated_data.get('password')
         user_id = validated_data.get('user_id')
-        phone_number = validated_data.get('phone_number')
+        phone_number = validated_data.pop('phone_number', '')
         profile_img = validated_data.get('profile_img')
         header_img = validated_data.get('header_img')
         bio = validated_data.pop('bio', '')

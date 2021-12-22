@@ -42,10 +42,10 @@ class EmailSignUpView(APIView):   #signup with email
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            user, jwt_token = serializer.save()
-        except IntegrityError:
-            return Response(status=status.HTTP_409_CONFLICT)
+        # try:
+        user, jwt_token = serializer.save()
+        # except IntegrityError:
+        #    return Response(status=status.HTTP_409_CONFLICT)
         return Response({'token': jwt_token}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id
