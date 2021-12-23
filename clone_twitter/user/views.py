@@ -1,9 +1,10 @@
 from django.shortcuts import render
-from rest_framework import status, permissions
+from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
+from rest_framework.decorators import action
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer
+from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer
 from django.db import IntegrityError
 from user.models import Follow, User
 # Create your views here.
@@ -111,3 +112,18 @@ class UserUnfollowView(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST, data='you can unfollow only currently following user')
         follow_relation.delete()
         return Response(status=status.HTTP_200_OK, data='successfully unfollowed')
+
+class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Follow.objects.all()
+    serializer_class = UserFollowSerializer
+    # TODO: 1. common serializer based on user model & manually make user list OR 2. separate 2serializers based on follow
+    permission_classes = (permissions.AllowAny,)
+
+    # GET /api/v1/follow_list/{lookup}/follower
+    @action(detail=True, methods=['GET'])
+    def follower(self, request, pk=None):
+        seminars = self.get_queryset()
+        followers = Follow.filter(following=request.user) # TODO: order?
+
+        serializer = self.get_serializer(followers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -113,3 +113,19 @@ class FollowSerializer(serializers.Serializer):
         follow_relation = Follow.objects.create(follower=follower, following=following)
         return follow_relation
 
+class UserFollowSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='follower.id')
+    username = serializers.CharField(source='follower.username')
+    user_id = serializers.CharField(source='follower.user_id')
+    bio = serializers.CharField(source='follower.bio')
+    # TODO profile img, follows me
+
+    class Meta:
+        model = Follow
+        fields = (
+            'id',
+            'username',
+            'user_id',
+            'bio'
+             #'profile_img'
+        )
