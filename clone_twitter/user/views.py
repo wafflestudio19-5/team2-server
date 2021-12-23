@@ -5,6 +5,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer
 from django.db import IntegrityError
+from user.models import Follow, User
 # Create your views here.
 
 class PingPongView(APIView):
@@ -68,8 +69,15 @@ class UserLoginView(APIView): #login with user_id
 
 # TODO: Logout.. expire token and add blacklist.. ?
 
-class UserFollowView(APIView):
+class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
     permission_classes = (permissions.AllowAny,)  # later change to Isauthenticated
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
+        }
+    ))
 
     def post(self, request):
         serializer = FollowSerializer(data=request.data, context={'request': request})
@@ -80,3 +88,26 @@ class UserFollowView(APIView):
             return Response(status=status.HTTP_409_CONFLICT, data='user already follows followee')
         return Response(status=status.HTTP_201_CREATED) #TODO: recommend user
 
+class UserUnfollowView(APIView):
+    permission_classes = (permissions.AllowAny,)  # later change to Isauthenticated
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
+        }
+    ))
+
+    def delete(self, request):
+        target_id = request.data.get('user_id', None)
+        if target_id is None:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data='you have specifiy user you want to unfollow')
+        try:
+            following = User.objects.get(user_id=target_id)
+            follow_relation = Follow.objects.get(follower=request.user, following=following)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data='no such user exists')
+        except Follow.DoesNotExist:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data='you can unfollow only currently following user')
+        follow_relation.delete()
+        return Response(status=status.HTTP_200_OK, data='successfully unfollowed')

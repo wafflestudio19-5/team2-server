@@ -157,6 +157,8 @@ class PostFollowTestCase(TestCase):
         Follow.objects.create(follower=cls.user1, following=cls.user2)
 
     def test_post_follow_fail(self):
+        follow_count = Follow.objects.count()
+        self.assertEqual(follow_count, 1)
         # target user does not exist
         response = self.client.post(
             '/api/v1/follow/',
@@ -188,5 +190,71 @@ class PostFollowTestCase(TestCase):
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        follow_count = Follow.objects.count()
+        self.assertEqual(follow_count, 2)
 
+class DeleteUnfollowTestCase(TestCase):
 
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678'
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.user2 = UserFactory(
+            email='email2@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-1234-0000'
+        )
+        Follow.objects.create(follower=cls.user1, following=cls.user2)
+
+    def test_delete_unfollow_fail(self):
+        response = self.client.delete(
+            '/api/v1/unfollow/',
+            data={'user_id': 'invalid_id'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.delete(
+            '/api/v1/unfollow/',
+            data={'user_id': 'user3_id'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        follow_count = Follow.objects.count()
+        self.assertEqual(follow_count, 1)
+
+    def test_delete_unfollow_success(self):
+        response = self.client.delete(
+            '/api/v1/unfollow/',
+            data={'user_id': 'user2_id'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        follow_count = Follow.objects.count()
+        self.assertEqual(follow_count, 0)
+
+    def test_unfollow_and_refollow(self):
+        self.client.delete(
+            '/api/v1/unfollow/',
+            data={'user_id': 'user2_id'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        response = self.client.post(
+            '/api/v1/follow/',
+            data={'user_id': 'user2_id'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        follow_count = Follow.objects.count()
+        self.assertEqual(follow_count, 1)
