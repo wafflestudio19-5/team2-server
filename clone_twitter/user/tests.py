@@ -258,3 +258,54 @@ class DeleteUnfollowTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         follow_count = Follow.objects.count()
         self.assertEqual(follow_count, 1)
+
+class GetFollowListTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678'
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.user2 = UserFactory(
+            email='email2@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-1234-0000'
+        )
+
+        cls.user3 = UserFactory(
+            email='email3@email.com',
+            user_id='user3_id',
+            username='username3',
+            password='password',
+            phone_number='010-0000-0000'
+        )
+        Follow.objects.create(follower=cls.user1, following=cls.user2)
+        Follow.objects.create(follower=cls.user2, following=cls.user1)
+        Follow.objects.create(follower=cls.user3, following=cls.user1)
+
+    def test_get_follower_success(self):
+        response = self.client.get(
+            '/api/v1/follow_list/3/follower/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        print(response.json())
+
+    def test_get_following_success(self):
+        response = self.client.get(
+            '/api/v1/follow_list/3/following/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        print(response.json())
+
