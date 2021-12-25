@@ -66,3 +66,11 @@ class Follow(models.Model):
     class Meta:
         # no duplicated follow relation
         constraints = [models.UniqueConstraint(fields=['follower', 'following'], name='follower-following relation')]
+
+class SocialAccount(models.Model):
+    TYPES = (('kakao', 'Kakao'),)  # add Google later after implementation
+
+    user = models.OneToOneField(get_user_model(), related_name='social-account', on_delete=models.CASCADE)
+    type = models.CharField(choices=TYPES)
+    account_id = models.IntegerField() # only for kakao login -> unique = true but.. if we add other social login then..
+

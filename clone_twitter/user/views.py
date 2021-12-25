@@ -136,3 +136,10 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = UserFollowingSerializer(followings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+# Social Login : Kakao
+# According to notion docs, front will get authorization code from kakao auth server
+# so backend has to get token from kakao api server
+
+class KakaoCallbackView(APIView):
+    permission_classes = (permissions.AllowAny,)
