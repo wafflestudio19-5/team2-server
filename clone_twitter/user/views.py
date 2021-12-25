@@ -7,6 +7,7 @@ from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer
 from django.db import IntegrityError
 from user.models import Follow, User
+import requests
 # Create your views here.
 
 class PingPongView(APIView):
@@ -141,5 +142,32 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
 # According to notion docs, front will get authorization code from kakao auth server
 # so backend has to get token from kakao api server
 
+# redirect uri = TODO
 class KakaoCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        # 1. get token
+        code = request.GET.get("code")   # TODO tell front (request / query param)
+        kakao_token_url = "https://kauth.kakao.com/oauth/token"
+        data = {
+            'grant_type': 'authorization_code',
+            'client_id': '',
+            'redirect_uri': '', #TODO,
+            'code': code,
+            'client_secret': '', # Not required but.. for security
+        }
+        response = requests.post(kakao_token_url, data=data).json()
+        access_token = response.get("access_token")
+
+        # 2. get user information
+        user_info_url = "https://kapi.kakao.com/v2/user/me"
+        user_info_response = requests.get(user_info_url, headers={"Authorization": f"Bearer ${access_token}"},).json()
+        kakao_id = user_info_response.get("id")
+        # TODO: are you going to get user profile, too???
+
+        # 3. connect kakao account - user
+        # case 1. connect existing twitter account - kakao account
+
+
+        # case 2. new user signup with kakao (might use profile info)
