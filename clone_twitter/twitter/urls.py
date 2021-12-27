@@ -30,6 +30,7 @@ urlpatterns = [
 schema_url_patterns = [   # urls that we want to check in swagger
     path('admin/', admin.site.urls),
     path('api/v1/', include('user.urls')),
+    path('api/v1/', include('tweet.urls')),
 ]
 
 schema_view_v1 = get_schema_view(
