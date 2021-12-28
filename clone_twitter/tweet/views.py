@@ -47,12 +47,12 @@ class TweetPostView(APIView):      # write & delete tweet
             return Response(status=status.HTTP_403_FORBIDDEN, data='please login first')
         tweet_id = request.data.get('id', None)
         if tweet_id is None:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='you have specifiy tweet you want to delete')
+            return Response(status=status.HTTP_400_BAD_REQUEST, data='you have specify tweet you want to delete')
         try:
             tweet = Tweet.objects.get(id=tweet_id)
         except Tweet.DoesNotExist:
             return Response(status=status.HTTP_400_BAD_REQUEST, data='no such tweet exists')
-        if (tweet.tweet_type != 3 and tweet.author != me) or (tweet.tweet_type == 3 and tweet.retweeting_user != me.user_id):
+        if (tweet.tweet_type != 'RETWEET' and tweet.author != me) or (tweet.tweet_type == 'RETWEET' and tweet.retweeting_user != me.user_id):
             return Response(status=status.HTTP_403_FORBIDDEN, data='you can delete only your tweets')
         tweet.delete()
         return Response(status=status.HTTP_200_OK, data='successfully delete tweet')

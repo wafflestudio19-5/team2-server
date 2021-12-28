@@ -96,13 +96,13 @@ class DeleteTweetTestCase(TestCase):
         cls.other_token = 'JWT ' + jwt_token_of(User.objects.get(email='test@email.com'))
 
         cls.tweet = TweetFactory(
-            tweet_type = 1,
+            tweet_type = 'GENERAL',
             author = cls.author,
             content = 'content'
         )
 
         cls.retweet = TweetFactory(
-            tweet_type = 3,
+            tweet_type = 'RETWEET',
             author = cls.other,
             retweeting_user = cls.author.user_id,
             content = 'content'
