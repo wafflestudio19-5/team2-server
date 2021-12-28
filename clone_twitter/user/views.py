@@ -8,6 +8,7 @@ from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSe
 from django.db import IntegrityError
 from user.models import Follow, User
 import requests
+from twitter.settings import get_secret
 # Create your views here.
 
 class PingPongView(APIView):
@@ -141,7 +142,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
 # Social Login : Kakao
 # According to notion docs, front will get authorization code from kakao auth server
 # so backend has to get token from kakao api server
-
+KAKAO_KEY = get_secret("CLIENT_ID")
 # redirect uri = TODO
 class KakaoCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
@@ -152,10 +153,10 @@ class KakaoCallbackView(APIView):
         kakao_token_url = "https://kauth.kakao.com/oauth/token"
         data = {
             'grant_type': 'authorization_code',
-            'client_id': '',
-            'redirect_uri': '', #TODO,
+            'client_id': KAKAO_KEY,
+            'redirect_uri': 'http://clonetwitter.shop/oauth/callback/kakao',
             'code': code,
-            'client_secret': '', # Not required but.. for security
+            # 'client_secret': '', # Not required but.. for security
         }
         response = requests.post(kakao_token_url, data=data).json()
         access_token = response.get("access_token")
