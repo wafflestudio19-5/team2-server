@@ -117,7 +117,7 @@ class DeleteTweetTestCase(TestCase):
 
     def test_delete_tweet_wrong_id(self):
         response = self.client.delete('/api/v1/tweet/', data={'id': 3}, content_type='application/json', HTTP_AUTHORIZATION=self.other_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         response = self.client.delete('/api/v1/tweet/', data={'wrong': 'a'}, content_type='application/json', HTTP_AUTHORIZATION=self.other_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

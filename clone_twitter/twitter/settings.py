@@ -112,8 +112,8 @@ DB_PASSWORD = get_secret("DATABASE")
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
-        # 'HOST': 'localhost',
+        # 'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
+        'HOST': 'localhost',
         'PORT': 3306,
         'NAME': 'twitter_backend',  
         'USER': 'twitter-backend',

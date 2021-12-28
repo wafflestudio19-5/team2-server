@@ -51,7 +51,7 @@ class TweetPostView(APIView):      # write & delete tweet
         try:
             tweet = Tweet.objects.get(id=tweet_id)
         except Tweet.DoesNotExist:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='no such tweet exists')
+            return Response(status=status.HTTP_404_NOT_FOUND, data='no such tweet exists')
         if (tweet.tweet_type != 'RETWEET' and tweet.author != me) or (tweet.tweet_type == 'RETWEET' and tweet.retweeting_user != me.user_id):
             return Response(status=status.HTTP_403_FORBIDDEN, data='you can delete only your tweets')
         tweet.delete()
