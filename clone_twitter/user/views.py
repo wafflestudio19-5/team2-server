@@ -50,7 +50,7 @@ class EmailSignUpView(APIView):   #signup with email
             user, jwt_token = serializer.save()
         except IntegrityError:
             return Response(status=status.HTTP_409_CONFLICT)
-        return Response({'token': jwt_token}, status=status.HTTP_201_CREATED)
+        return Response({'token': jwt_token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id
     permission_classes = (permissions.AllowAny, )
@@ -67,8 +67,8 @@ class UserLoginView(APIView): #login with user_id
         serializer = UserLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data['token']
-
-        return Response({'success': True, 'token': token}, status=status.HTTP_200_OK)
+        user_id = serializer.validated_data['user_id']
+        return Response({'success': True, 'token': token, 'user_id': user_id}, status=status.HTTP_200_OK)
 
 # TODO: Logout.. expire token and add blacklist.. ?
 

@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'rest_framework_jwt',
     'rest_framework.authtoken',
     'user',
+    'tweet',
     'drf_yasg',
     'corsheaders',
 ]
@@ -112,6 +113,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
+        # 'HOST': 'localhost',
         'PORT': 3306,
         'NAME': 'twitter_backend',  
         'USER': 'twitter-backend',
