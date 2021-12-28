@@ -15,12 +15,12 @@ class Tweet(models.Model):
     retweeting_user = models.CharField(max_length=20, blank=True)
     reply_to = models.CharField(max_length=20, blank=True)
     # retweeting_user, reply_to : User.user_id
-    content = models.CharField(max_length=500)
+    content = models.CharField(max_length=500, blank=True)
     media = models.FileField()  # TODO connect to S3. (we store only urls/key in DB)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Reply(models.Model):
-    replied = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='replied_by')
+    replied = models.ForeignKey(Tweet, on_delete=models.SET_NULL, null=True, related_name='replied_by')
     replying = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='replying_to')
 
 class Retweet(models.Model):

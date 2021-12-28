@@ -7,11 +7,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tweet.models import Tweet
-from tweet.serializers import TweetWriteSerializer
+from tweet.serializers import TweetWriteSerializer, ReplySerializer
 
 
 class TweetPostView(APIView):      # write & delete tweet
-    permission_classes = (permissions.AllowAny, )
+    permission_classes = (permissions.IsAuthenticated, )
 
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -22,9 +22,6 @@ class TweetPostView(APIView):      # write & delete tweet
     ))
 
     def post(self, request):
-        if request.user.is_anonymous:
-            return Response(status=status.HTTP_403_FORBIDDEN, data='please login first')
-
         serializer = TweetWriteSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
@@ -37,14 +34,12 @@ class TweetPostView(APIView):      # write & delete tweet
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='id'),
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='tweet_id'),
         }
     ))
 
     def delete(self, request):
         me = request.user
-        if me.is_anonymous:
-            return Response(status=status.HTTP_403_FORBIDDEN, data='please login first')
         tweet_id = request.data.get('id', None)
         if tweet_id is None:
             return Response(status=status.HTTP_400_BAD_REQUEST, data='you have specify tweet you want to delete')
@@ -58,6 +53,29 @@ class TweetPostView(APIView):      # write & delete tweet
         return Response(status=status.HTTP_200_OK, data='successfully delete tweet')
 
 
-# class TweetDetailView(APIView):     # delete tweet & open thread of the tweet
+# class TweetDetailView(APIView):     # open thread of the tweet
 #     permission_classes = (permissions.AllowAny, )
 
+
+class ReplyView(APIView):       # reply tweet
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='tweet_id'),
+            'content': openapi.Schema(type=openapi.TYPE_STRING, description='content'),
+            'media': openapi.Schema(type=openapi.TYPE_FILE, description='media'),
+        }
+    ))
+    def post(self, request):
+        serializer = ReplySerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            success = serializer.save()
+            if not success:
+                return Response(status=status.HTTP_404_NOT_FOUND, data='no such tweet exists')
+        except IntegrityError:
+            return Response(status=status.HTTP_409_CONFLICT)
+        return Response(status=status.HTTP_201_CREATED, data='successfully reply tweet')
