@@ -24,6 +24,7 @@ from drf_yasg import openapi
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('user.urls')),
+    path('api/v1/', include('tweet.urls')),
 ]
 
 #swagger related url

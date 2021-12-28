@@ -4,13 +4,13 @@ from user.models import User
 
 class Tweet(models.Model):
     TYPE = (
-        (1, 'regular'),
-        (2, 'reply'),
-        (3, 'retweet'),
-        (4, 'quote_retweet'),
+        ('GENERAL', 'general'),
+        ('REPLY', 'reply'),
+        ('RETWEET', 'retweet'),
+        ('QUOTE', 'quote_retweet'),
     )
 
-    tweet_type = models.PositiveSmallIntegerField(choices=TYPE)
+    tweet_type = models.CharField(choices=TYPE, max_length=10)
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tweets')
     retweeting_user = models.CharField(max_length=20, blank=True)
     reply_to = models.CharField(max_length=20, blank=True)
