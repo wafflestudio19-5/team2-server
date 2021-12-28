@@ -39,7 +39,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'user_id'  #TODO
 
     user_id = models.CharField(max_length=20, unique=True, db_index=True)  # ex) @waffle -> user_id = waffle
-    username = models.CharField(max_length=20, unique=True)  # nickname ex) Waffle @1234 -> Waffle
+    username = models.CharField(max_length=20)  # nickname ex) Waffle @1234 -> Waffle
     email = models.EmailField(max_length=100, unique=True)
 
     phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{4}-[\d]{4}")  # another option: 1)validation with drf 2)external library
@@ -66,3 +66,11 @@ class Follow(models.Model):
     class Meta:
         # no duplicated follow relation
         constraints = [models.UniqueConstraint(fields=['follower', 'following'], name='follower-following relation')]
+
+class SocialAccount(models.Model):
+    TYPES = (('kakao', 'Kakao'),)  # add Google later after implementation
+
+    user = models.OneToOneField(get_user_model(), related_name='social_account', on_delete=models.CASCADE)
+    type = models.CharField(choices=TYPES, max_length=10)
+    account_id = models.IntegerField() # only for kakao login -> unique = true but.. if we add other social login then..
+

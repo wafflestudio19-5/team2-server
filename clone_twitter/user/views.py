@@ -7,6 +7,7 @@ from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer
 from django.db import IntegrityError
 from user.models import Follow, User
+import requests
 # Create your views here.
 
 class PingPongView(APIView):
@@ -48,7 +49,7 @@ class EmailSignUpView(APIView):   #signup with email
             user, jwt_token = serializer.save()
         except IntegrityError:
             return Response(status=status.HTTP_409_CONFLICT)
-        return Response({'token': jwt_token}, status=status.HTTP_201_CREATED)
+        return Response({'token': jwt_token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id
     permission_classes = (permissions.AllowAny, )
@@ -65,8 +66,8 @@ class UserLoginView(APIView): #login with user_id
         serializer = UserLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data['token']
-
-        return Response({'success': True, 'token': token}, status=status.HTTP_200_OK)
+        user_id = serializer.validated_data['user_id']
+        return Response({'success': True, 'token': token, 'user_id': user_id}, status=status.HTTP_200_OK)
 
 # TODO: Logout.. expire token and add blacklist.. ?
 
@@ -136,3 +137,37 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = UserFollowingSerializer(followings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+# Social Login : Kakao
+# According to notion docs, front will get authorization code from kakao auth server
+# so backend has to get token from kakao api server
+
+# redirect uri = TODO
+class KakaoCallbackView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        # 1. get token
+        code = request.GET.get("code")   # TODO tell front (request / query param)
+        kakao_token_url = "https://kauth.kakao.com/oauth/token"
+        data = {
+            'grant_type': 'authorization_code',
+            'client_id': '',
+            'redirect_uri': '', #TODO,
+            'code': code,
+            'client_secret': '', # Not required but.. for security
+        }
+        response = requests.post(kakao_token_url, data=data).json()
+        access_token = response.get("access_token")
+
+        # 2. get user information
+        user_info_url = "https://kapi.kakao.com/v2/user/me"
+        user_info_response = requests.get(user_info_url, headers={"Authorization": f"Bearer ${access_token}"},).json()
+        kakao_id = user_info_response.get("id")
+        # TODO: are you going to get user profile, too???
+
+        # 3. connect kakao account - user
+        # case 1. connect existing twitter account - kakao account
+
+
+        # case 2. new user signup with kakao (might use profile info)
