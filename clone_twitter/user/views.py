@@ -108,9 +108,9 @@ class UserUnfollowView(APIView):
             following = User.objects.get(user_id=target_id)
             follow_relation = Follow.objects.get(follower=request.user, following=following)
         except User.DoesNotExist:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='no such user exists')
+            return Response(status=status.HTTP_404_NOT_FOUND, data='no such user exists')
         except Follow.DoesNotExist:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='you can unfollow only currently following user')
+            return Response(status=status.HTTP_404_NOT_FOUND, data='you can unfollow only currently following user')
         follow_relation.delete()
         return Response(status=status.HTTP_200_OK, data='successfully unfollowed')
 
