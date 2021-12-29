@@ -21,9 +21,12 @@ from drf_yasg.views import get_schema_view
 from rest_framework.permissions import AllowAny
 from drf_yasg import openapi
 
+from user.views import KakaoCallbackView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('user.urls')),
+    path('oauth/callback/kakao/', KakaoCallbackView.as_view(), name='kakao'), #tmp
 ]
 
 #swagger related url

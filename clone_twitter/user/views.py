@@ -1,12 +1,12 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer
+from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of
 from django.db import IntegrityError
-from user.models import Follow, User
+from user.models import Follow, User, SocialAccount
 import requests
 from twitter.settings import get_secret
 # Create your views here.
@@ -49,7 +49,7 @@ class EmailSignUpView(APIView):   #signup with email
         try:
             user, jwt_token = serializer.save()
         except IntegrityError:
-            return Response(status=status.HTTP_409_CONFLICT)
+            return Response({"message": "unexpected db error"}, status=status.HTTP_409_CONFLICT)
         return Response({'token': jwt_token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id
@@ -143,7 +143,17 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
 # According to notion docs, front will get authorization code from kakao auth server
 # so backend has to get token from kakao api server
 KAKAO_KEY = get_secret("CLIENT_ID")
-# redirect uri = TODO
+redirect_uri = 'http://localhost:3000/oauth/callback/kakao'
+
+class KaKaoSignInView(APIView):  # front's job but for test..
+    permission_classes = (permissions.AllowAny,)
+    def get(self, request):
+        kakao_auth_url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
+        response = redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={redirect_uri}')
+        return response
+
+
+
 class KakaoCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -154,7 +164,7 @@ class KakaoCallbackView(APIView):
         data = {
             'grant_type': 'authorization_code',
             'client_id': KAKAO_KEY,
-            'redirect_uri': 'http://clonetwitter.shop/oauth/callback/kakao',
+            'redirect_uri': redirect_uri,
             'code': code,
             # 'client_secret': '', # Not required but.. for security
         }
@@ -168,7 +178,26 @@ class KakaoCallbackView(APIView):
         # TODO: are you going to get user profile, too???
 
         # 3. connect kakao account - user
-        # case 1. connect existing twitter account - kakao account
+        # user signed up with email -> enable kakao login
+        # user signed up with kakao -> enable kakao login (Q. base login?)
 
+
+
+
+
+        # case 1. user who has connected kakao account trying to login
+        if SocialAccount.objects.filter(account_id=kakao_id).exsits():
+            user = SocialAccount.objects.get(account_id=kakao_id).user
+            token = jwt_token_of(user)
+            return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
 
         # case 2. new user signup with kakao (might use profile info)
+        else:
+            user = User(user_id='random')  # TODO generate random unique (tmp) user_id
+            user.set_unusable_password()  # user signed up with kakao can only login via kakao login
+            user.save()
+            kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
+            token = jwt_token_of(user)
+            return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
+        return Response({"hi"}, status=status.HTTP_200_OK)
+        # TODO: DO we connect authenticated user(email signup) - kakao ?
