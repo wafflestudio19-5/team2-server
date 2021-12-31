@@ -28,6 +28,22 @@ class Retweet(models.Model):
     retweeting = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='retweeting')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='retweets')
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'retweeted'],
+                name='unique retweet'
+            )
+        ]
+
 class UserLike(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
     liked = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='liked_by')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'liked'],
+                name='unique like'
+            )
+        ]
