@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tweet.models import Tweet, Retweet
-from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer
+from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer
 
 
 class TweetPostView(APIView):      # write & delete tweet
@@ -58,8 +58,13 @@ class TweetPostView(APIView):      # write & delete tweet
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully delete tweet'})
 
 
-# class TweetDetailView(APIView):     # open thread of the tweet
-#     permission_classes = (permissions.AllowAny, )
+class TweetDetailView(APIView):     # open thread of the tweet
+    permission_classes = (permissions.AllowAny, )
+
+    def get(self, request, pk):
+        tweet = get_object_or_404(Tweet, pk=pk)
+        serializer = TweetDetailSerializer(tweet, context={'request': request})
+        return Response(serializer.data)
 
 
 class ReplyView(APIView):       # reply tweet
@@ -132,3 +137,5 @@ class RetweetView(APIView):       # do/cancel retweet
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'you have not retweeted this tweet'})
         retweeting.delete()
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel retweet'})
+
+

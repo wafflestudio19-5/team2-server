@@ -16,6 +16,7 @@ def jwt_token_of(user):
     jwt_token = JWT_ENCODE_HANDLER(payload)
     return jwt_token
 
+
 class UserCreateSerializer(serializers.Serializer):
     user_id = serializers.CharField(required=True)  # ex) @waffle -> user_id = waffle
     username = serializers.CharField(required=True) # nickname ex) Waffle @1234 -> Waffle
@@ -72,6 +73,7 @@ class UserCreateSerializer(serializers.Serializer):
 
         return user, jwt_token_of(user)
 
+
 class UserLoginSerializer(serializers.Serializer):
     user_id = serializers.CharField(max_length=20)
     # email = serializers.CharField(max_length=100)
@@ -92,6 +94,7 @@ class UserLoginSerializer(serializers.Serializer):
             'user_id': user.user_id,
             'token': jwt_token_of(user)
         }
+
 
 class FollowSerializer(serializers.Serializer):
     user_id = serializers.CharField(max_length=20, required=True)
@@ -131,6 +134,7 @@ class UserFollowSerializer(serializers.ModelSerializer):    #TODO: merge followi
              #'profile_img'
         )
 
+
 class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
     id = serializers.IntegerField(source='following.id')
     username = serializers.CharField(source='following.username')
@@ -148,3 +152,13 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
              #'follows_me'
              #'profile_img'
         )
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username',
+            'user_id',
+            'profile_img',
+        ]
