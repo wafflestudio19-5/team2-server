@@ -108,3 +108,27 @@ class RetweetView(APIView):       # do/cancel retweet
         except IntegrityError:
             return Response(status=status.HTTP_409_CONFLICT, data={'message': 'you already retweeted this tweet'})
         return Response(status=status.HTTP_201_CREATED, data={'message': 'successfully do retweet'})
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'source_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='source_tweet_id'),
+        }
+    ))
+
+    def delete(self, request):
+        me = request.user
+        source_tweet_id = request.data.get('source_id', None)
+        if source_tweet_id is None:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'you have specify source tweet you want to cancel retweet'})
+        try:
+            source_tweet = Tweet.objects.get(id=source_tweet_id)
+        except Tweet.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such source tweet exists'})
+
+        try:
+            retweeting = source_tweet.retweeted_by.get(user=me).retweeting
+        except Retweet.DoesNotExist:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'you have not retweeted this tweet'})
+        retweeting.delete()
+        return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel retweet'})
