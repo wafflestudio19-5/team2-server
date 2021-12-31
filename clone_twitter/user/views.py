@@ -153,7 +153,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
     def partial_update(self, request, pk=None):
         user = request.user
 
-        serializer = self.get_serializer(user, data=request.data)
+        serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -178,7 +178,7 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         
         user = request.user
 
-        serializer = self.get_serializer(user, data=request.data)
+        serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 

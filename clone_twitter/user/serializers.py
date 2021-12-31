@@ -3,6 +3,7 @@ from rest_framework_jwt.settings import api_settings
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
 import re
+from clone_twitter.tweet.serializers import TweetDetailSerializer
 from user.models import Follow
 
 # jwt token setting
@@ -167,6 +168,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'birth_date'
         )
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username',
+            'user_id',
+            'profile_img',
+        ]
 
 class UserInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='username')
@@ -177,8 +186,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
     bio = serializers.CharField(source='bio')
     created_at = serializers.DateTimeField(source='created_at')
     birth_date = serializers.DateField(source='birth_date')
-    # TODO add tweets field after a serializer that fetches tweet data is implemented
-    # tweets = serializers.SerializerMethodField()
+    
+    tweets = serializers.SerializerMethodField()
     tweets_num = serializers.SerializerMethodField()
     following = serializers.SerializerMethodField()
     follower = serializers.SerializerMethodField()
@@ -193,16 +202,16 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'bio',
             'created_at',
             'birth_date',
-            # 'tweets',
+            'tweets',
             'tweets_num',
             'following',
             'follower'
         )
 
     def get_tweets(self, obj):
-        # TODO implement get_tweets() after a serializer that fetches tweet data is implemented
-        pass
-
+        tweets = obj.tweets.all()
+        serialized_tweets = TweetDetailSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
+        return serialized_tweets.data
 
     def get_tweets_num(self, obj):
         return obj.tweets.all().count()
@@ -211,4 +220,19 @@ class UserInfoSerializer(serializers.ModelSerializer):
         return obj.following.all().count()
 
     def get_follower(self, obj):
-        return obj.follower.all().count()
+        return obj.follower.all().count() 
+
+    # at least 4, at most 15 letters
+    # only letters, digits, underscore(_) are allowed
+    # https://help.twitter.com/ko/managing-your-account/change-twitter-handle
+    def validate_user_id(self, value):
+        if len(value) < 4 or len(value) > 15:
+            raise serializers.ValidationError("you should use 4~15 letters for user_id")        
+        if not (value.isalnum() or value.replace('_', '').isalnum()):
+            raise serializers.ValidationError("your user_id should only contain letters, digits and underscore")
+        
+        return value
+
+    def update(self, instance, validated_data):
+        instance.user_id = validated_data.get('user_id', instance.user_id)
+        return instance
