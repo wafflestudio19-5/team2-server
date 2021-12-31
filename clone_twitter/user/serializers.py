@@ -148,3 +148,67 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
              #'follows_me'
              #'profile_img'
         )
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='username')
+    # TODO add image field after setting image server
+    # profile_img = serializers.ImageField(source='profile_img')
+    # header_img = serializers.ImageField(source='header_img)
+    bio = serializers.CharField(source='bio')
+    birth_date =serializers.DateField(source='birth_date')
+
+    class Meta:
+        model = User
+        fields = ( 
+            'username',
+            #'profile_img',
+            #'header_img',
+            'bio',
+            'birth_date'
+        )
+
+
+class UserInfoSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='username')
+    user_id = serializers.CharField(source='user_id')
+    # TODO add image field after setting image server
+    # profile_img = serializers.ImageField(source='profile_img')
+    # header_img = serializers.ImageField(source='header_img)
+    bio = serializers.CharField(source='bio')
+    created_at = serializers.DateTimeField(source='created_at')
+    birth_date = serializers.DateField(source='birth_date')
+    # TODO add tweets field after a serializer that fetches tweet data is implemented
+    # tweets = serializers.SerializerMethodField()
+    tweets_num = serializers.SerializerMethodField()
+    following = serializers.SerializerMethodField()
+    follower = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'user_id',
+            # 'profile_img',
+            # 'header_img',
+            'bio',
+            'created_at',
+            'birth_date',
+            # 'tweets',
+            'tweets_num',
+            'following',
+            'follower'
+        )
+
+    def get_tweets(self, obj):
+        # TODO implement get_tweets() after a serializer that fetches tweet data is implemented
+        pass
+
+
+    def get_tweets_num(self, obj):
+        return obj.tweets.all().count()
+
+    def get_following(self, obj):
+        return obj.following.all().count()
+
+    def get_follower(self, obj):
+        return obj.follower.all().count()

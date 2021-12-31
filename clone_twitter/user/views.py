@@ -1,10 +1,10 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status, permissions, viewsets
+from rest_framework import serializers, status, permissions, viewsets
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer
+from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer
 from django.db import IntegrityError
 from user.models import Follow, User
 import requests
@@ -136,6 +136,50 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         followings = Follow.objects.filter(follower=user)  # TODO: order?
 
         serializer = UserFollowingSerializer(followings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class UserProfileViewSet(viewsets.GenericViewSet):
+    serializer_class = UserProfileSerializer
+    permission_classes = (permissions.AllowAny,)
+    
+    # GET /user/profile/
+    def retrieve(self, request, pk=None):
+        user = request.user
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    # PATCH /user/profile/
+    def partial_update(self, request, pk=None):
+        user = request.user
+
+        serializer = self.get_serializer(user, data=request.data)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class UserInfoViewSet(viewsets.GenericViewSet):
+    serializer_class = UserInfoSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    # GET /user/{user_user_id}/
+    def retrieve(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, pk=pk)
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+     # PATCH /user/id/
+    def partial_update(self, request, pk=None):
+        if pk != 'id':
+            return Response(status=status.HTTP_400_BAD_REQUEST, data='use /user/id/ to change your user id.')
+        
+        user = request.user
+
+        serializer = self.get_serializer(user, data=request.data)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # Social Login : Kakao

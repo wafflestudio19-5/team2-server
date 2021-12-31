@@ -1,3 +1,4 @@
+import datetime
 from django.test import TestCase
 
 from factory.django import DjangoModelFactory
@@ -309,3 +310,89 @@ class GetFollowListTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         print(response.json())
 
+class GetUserProfileTestCase(TestCase):
+    
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='I am User 1.',
+            birth_date=datetime.date(2002, 11, 15)
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+    
+        cls.user2 = UserFactory(
+            email='email2@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='', # blank
+            birth_date=None # null
+        )
+        cls.user2_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+    
+    def test_get_profile_success(self):
+        response = self.client.get(
+            '/api/v1/user/profile/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        print(response.json())
+
+        # get profile with blank data and null data
+        response = self.client.get(
+            '/api/v1/user/profile/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user2_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        print(response.json())
+
+class PatchUserProfileTestCase(TestCase):
+    
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='I am User 1.',
+            birth_date=datetime.date(2002, 11, 15)
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+    # TODO include testcase with profile_img and header_img
+    def test_patch_profile_success(self):
+        # all profile data included
+        response = self.client.patch(
+            '/api/v1/user/profile/',
+            data={
+                'username': 'username2',
+                'bio': 'I am User 2.',
+                'birth_date': datetime.date(2006, 10, 18)
+            },
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        print(response.json())
+
+        # username unincluded & update data into blank or null
+        response = self.client.patch(
+            '/api/v1/user/profile/',
+            data={
+                'bio': '',
+                'birth_date': None
+            },
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        print(response.json())
+    
