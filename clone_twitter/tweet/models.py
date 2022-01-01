@@ -36,6 +36,11 @@ class Retweet(models.Model):
             )
         ]
 
+class Quote(models.Model):
+    quoted = models.ForeignKey(Tweet, on_delete=models.SET_NULL, null=True, related_name='quoted_by')
+    quoting = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='quoting')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quotes')
+
 class UserLike(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
     liked = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='liked_by')
