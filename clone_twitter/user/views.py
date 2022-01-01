@@ -1,13 +1,17 @@
-from django.shortcuts import get_object_or_404
+import json
+from user.utils import unique_random_id_generator
+from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer
+from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of
 from django.db import IntegrityError
-from user.models import Follow, User
+from user.models import Follow, User, SocialAccount
 import requests
+from twitter.settings import get_secret
 # Create your views here.
 
 class PingPongView(APIView):
@@ -25,6 +29,7 @@ class PingPongView(APIView):
 
 class EmailSignUpView(APIView):   #signup with email
     permission_classes = (permissions.AllowAny, )
+    # parser_classes = [JSONParser]
 
     @swagger_auto_schema(request_body=openapi.Schema(  #TODO check format
         type=openapi.TYPE_OBJECT,
@@ -48,7 +53,7 @@ class EmailSignUpView(APIView):   #signup with email
         try:
             user, jwt_token = serializer.save()
         except IntegrityError:
-            return Response(status=status.HTTP_409_CONFLICT)
+            return Response(status=status.HTTP_409_CONFLICT, data={"message": "unexpected db error"})
         return Response({'token': jwt_token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id
@@ -72,7 +77,7 @@ class UserLoginView(APIView): #login with user_id
 # TODO: Logout.. expire token and add blacklist.. ?
 
 class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
-    permission_classes = (permissions.AllowAny,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
 
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -87,11 +92,11 @@ class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using 
         try:
             follow_relation = serializer.save()
         except IntegrityError:
-            return Response(status=status.HTTP_409_CONFLICT, data='user already follows followee')
+            return Response(status=status.HTTP_409_CONFLICT, data={'message':'user already follows followee'})
         return Response(status=status.HTTP_201_CREATED) #TODO: recommend user
 
 class UserUnfollowView(APIView):
-    permission_classes = (permissions.AllowAny,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
 
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -103,14 +108,14 @@ class UserUnfollowView(APIView):
     def delete(self, request):
         target_id = request.data.get('user_id', None)
         if target_id is None:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='you have specifiy user you want to unfollow')
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message':'you have specify user you want to unfollow'})
         try:
             following = User.objects.get(user_id=target_id)
             follow_relation = Follow.objects.get(follower=request.user, following=following)
         except User.DoesNotExist:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='no such user exists')
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such user exists'})
         except Follow.DoesNotExist:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='you can unfollow only currently following user')
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'you can unfollow only currently following user'})
         follow_relation.delete()
         return Response(status=status.HTTP_200_OK, data='successfully unfollowed')
 
@@ -141,8 +146,19 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
 # Social Login : Kakao
 # According to notion docs, front will get authorization code from kakao auth server
 # so backend has to get token from kakao api server
+KAKAO_KEY = get_secret("CLIENT_ID")
+REDIRECT_URI = get_secret("REDIRECT_URI")
 
-# redirect uri = TODO
+
+class KaKaoSignInView(APIView):  # front's job but for test..
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        kakao_auth_url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
+        response = redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={REDIRECT_URI}')
+        return response
+
+
 class KakaoCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -152,10 +168,10 @@ class KakaoCallbackView(APIView):
         kakao_token_url = "https://kauth.kakao.com/oauth/token"
         data = {
             'grant_type': 'authorization_code',
-            'client_id': '',
-            'redirect_uri': '', #TODO,
+            'client_id': KAKAO_KEY,
+            'redirect_uri': REDIRECT_URI,
             'code': code,
-            'client_secret': '', # Not required but.. for security
+            # 'client_secret': '', # Not required but.. for security
         }
         response = requests.post(kakao_token_url, data=data).json()
         access_token = response.get("access_token")
@@ -167,7 +183,20 @@ class KakaoCallbackView(APIView):
         # TODO: are you going to get user profile, too???
 
         # 3. connect kakao account - user
-        # case 1. connect existing twitter account - kakao account
-
+        # user signed up with kakao -> enable kakao login (Q. base login?)
+        # case 1. user who has signed up with kakao account trying to login
+        kakao_account = SocialAccount.objects.filter(account_id=kakao_id)
+        if kakao_account:
+            user = kakao_account.first().user
+            token = jwt_token_of(user)
+            return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
 
         # case 2. new user signup with kakao (might use profile info)
+        else:
+            random_id = unique_random_id_generator()
+            user = User(user_id=random_id)  # (tmp) user_id
+            user.set_unusable_password()  # user signed up with kakao can only login via kakao login
+            user.save()
+            kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
+            token = jwt_token_of(user)
+            return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)

@@ -27,20 +27,17 @@ class UserCreateSerializer(serializers.Serializer):
     bio = serializers.CharField(required=False)
     birth_date = serializers.DateField(required=False)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
-    allow_notification = serializers.BooleanField(required=False)
+    allow_notification = serializers.BooleanField(required=False, default=True)
 
     def validate(self, data):
         user_id = data.get('user_id')
-        username = data.get('username')
         email = data.get('email')
         phone_number = data.get('phone_number', '')
 
         if User.objects.filter(user_id=user_id).exists():
-            raise serializers.ValidationError("same user_id exsits already")
-        if User.objects.filter(username=username).exists():
-            raise serializers.ValidationError("same username exsits already")
+            raise serializers.ValidationError("same user_id exists already")
         if email and User.objects.filter(email=email).exists():
-            raise serializers.ValidationError("same email exsits already")
+            raise serializers.ValidationError("same email exists already")
         if phone_number == '':  # since '' regarded as duplicate entry in db
             data.update({'phone_number': None})
         if phone_number and User.objects.filter(phone_number=phone_number).exists():
@@ -69,7 +66,6 @@ class UserCreateSerializer(serializers.Serializer):
         user = User.objects.create_user(email=email, user_id=user_id, username=username, password=password,
                                         phone_number=phone_number, profile_img=profile_img, header_img=header_img,
                                         bio=bio, birth_date=birth_date, allow_notification=allow_notification)
-
         return user, jwt_token_of(user)
 
 class UserLoginSerializer(serializers.Serializer):
