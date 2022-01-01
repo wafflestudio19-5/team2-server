@@ -23,11 +23,11 @@ class CustomUserManager(BaseUserManager):
         return self._create_user(email, password, **extra_fields)
 
 
-    def create_superuser(self, email, password, **extra_fields):
+    def create_superuser(self, password, **extra_fields):
 
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-
+        email = 'admin@gmail.com'
         if extra_fields.get('is_staff') is not True or extra_fields.get('is_superuser') is not True:
             raise ValueError('권한 설정이 잘못되었습니다.')
 

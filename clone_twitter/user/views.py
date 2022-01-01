@@ -1,7 +1,10 @@
+import json
+
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of
@@ -26,6 +29,7 @@ class PingPongView(APIView):
 
 class EmailSignUpView(APIView):   #signup with email
     permission_classes = (permissions.AllowAny, )
+    parser_classes = [JSONParser]
 
     @swagger_auto_schema(request_body=openapi.Schema(  #TODO check format
         type=openapi.TYPE_OBJECT,
@@ -179,12 +183,8 @@ class KakaoCallbackView(APIView):
 
         # 3. connect kakao account - user
         # user signed up with email -> enable kakao login
+
         # user signed up with kakao -> enable kakao login (Q. base login?)
-
-
-
-
-
         # case 1. user who has connected kakao account trying to login
         if SocialAccount.objects.filter(account_id=kakao_id).exsits():
             user = SocialAccount.objects.get(account_id=kakao_id).user
@@ -200,4 +200,3 @@ class KakaoCallbackView(APIView):
             token = jwt_token_of(user)
             return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
         return Response({"hi"}, status=status.HTTP_200_OK)
-        # TODO: DO we connect authenticated user(email signup) - kakao ?
