@@ -335,7 +335,7 @@ class RetweetTestCase(TestCase):
 
     def test_retweet_multiple_times(self):
         data = self.post_data.copy()
-        response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
         with transaction.atomic():
             response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
@@ -350,7 +350,7 @@ class RetweetTestCase(TestCase):
 
     def test_retweet_delete(self):
         data = self.post_data.copy()
-        response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
 
         # delete retweeting tweet
         response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
@@ -363,7 +363,7 @@ class RetweetTestCase(TestCase):
 
         # delete retweeted tweet
         data = self.post_data.copy()
-        response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
 
         response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -440,7 +440,7 @@ class RetweetCancelTestCase(TestCase):
         self.assertEqual(data['message'], "you have specify source tweet you want to cancel retweet")
 
     def test_retweet_cancel_does_not_exist_retweet(self):
-        response = self.client.delete('/api/v1/tweet/', data={'id': self.source_tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.client.delete('/api/v1/tweet/', data={'id': self.source_tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
 
         data = self.post_data.copy()
         response = self.client.delete('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
@@ -461,3 +461,123 @@ class RetweetCancelTestCase(TestCase):
         self.assertEqual(tweet_count, 1)
         retweet_count = Retweet.objects.count()
         self.assertEqual(retweet_count, 0)
+
+
+class TweetDetailTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username1',
+            password='password',
+            phone_number='010-1234-5678'
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.user2 = UserFactory(
+            email='test@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-1111-2222'
+        )
+        cls.user2_token = 'JWT ' + jwt_token_of(User.objects.get(email='test@email.com'))
+
+        cls.tweet = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user1,
+            content = 'content'
+        )
+
+
+    def test_get_tweet_wrong_pk(self):
+        response = self.client.get('/api/v1/tweet/0/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_tweet_pk(self):
+        tweets = Tweet.objects.all()
+        tweet = tweets[0]
+
+        self.client.post('/api/v1/reply/', data={'id': tweet.id, 'content': 'content'}, content_type='application/json', HTTP_AUTHORIZATION=self.user1_token)
+        self.client.post('/api/v1/reply/', data={'id': tweet.id + 1, 'content': 'content'}, content_type='application/json', HTTP_AUTHORIZATION=self.user2_token)
+        self.client.post('/api/v1/reply/', data={'id': tweet.id + 1, 'content': 'content'}, content_type='application/json', HTTP_AUTHORIZATION=self.user1_token)
+        self.client.post('/api/v1/retweet/', data={'id': tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user2_token)
+
+        response = self.client.get('/api/v1/tweet/' + str(tweet.id+1) + '/', HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        self.assertIn('id', data)
+
+        author = data['author']
+        self.assertIsNotNone(author)
+        self.assertEqual(author['username'], 'username1')
+        self.assertEqual(author['user_id'], 'user1_id')
+        self.assertIsNone(author['profile_img'])
+
+        self.assertEqual(data['tweet_type'], 'REPLY')
+        self.assertEqual(data['retweeting_user'], '')
+        self.assertEqual(data['reply_to'], 'user1_id')
+        self.assertEqual(data['content'], 'content')
+        self.assertIsNone(data['media'])
+        self.assertIn('created_at', data)
+        self.assertEqual(data['retweets'], 1)
+        self.assertFalse(data['user_retweet'])
+        self.assertEqual(data['quotes'], 0)
+        self.assertEqual(data['likes'], 0)
+        self.assertFalse(data['user_like'])
+
+
+        replied_tweet = data['replied_tweet']
+        self.assertIsNotNone(replied_tweet)
+
+        self.assertIn('id', replied_tweet)
+
+        author = replied_tweet['author']
+        self.assertIsNotNone(author)
+        self.assertEqual(author['username'], 'username1')
+        self.assertEqual(author['user_id'], 'user1_id')
+        self.assertIsNone(author['profile_img'])
+
+        self.assertEqual(replied_tweet['tweet_type'], 'GENERAL')
+        self.assertEqual(replied_tweet['retweeting_user'], '')
+        self.assertEqual(replied_tweet['reply_to'], '')
+        self.assertEqual(replied_tweet['content'], 'content')
+        self.assertIsNone(replied_tweet['media'])
+        self.assertIn('created_at', replied_tweet)
+        self.assertEqual(replied_tweet['replies'], 1)
+        self.assertEqual(replied_tweet['retweets'], 0)
+        self.assertFalse(replied_tweet['user_retweet'])
+        self.assertEqual(replied_tweet['likes'], 0)
+        self.assertFalse(replied_tweet['user_like'])
+
+        replying_tweets = data['replying_tweets']
+        self.assertIsNotNone(replying_tweets)
+        self.assertEqual(len(replying_tweets), 2)
+        replying_tweet = replying_tweets[0]
+
+        self.assertIn('id', replying_tweet)
+
+        author = replying_tweet['author']
+        self.assertIsNotNone(author)
+        self.assertEqual(author['username'], 'username2')
+        self.assertEqual(author['user_id'], 'user2_id')
+        self.assertIsNone(author['profile_img'])
+
+        self.assertEqual(replying_tweet['content'], 'content')
+        self.assertIsNone(replying_tweet['media'])
+        self.assertIn('created_at', replying_tweet)
+        self.assertEqual(replying_tweet['replies'], 0)
+        self.assertEqual(replying_tweet['retweets'], 0)
+        self.assertFalse(replying_tweet['user_retweet'])
+        self.assertEqual(replying_tweet['likes'], 0)
+        self.assertFalse(replying_tweet['user_like'])
+
+
+        response = self.client.get('/api/v1/tweet/' + str(tweet.id + 1) + '/', HTTP_AUTHORIZATION=self.user2_token)
+        data = response.json()
+
+        self.assertTrue(data['user_retweet'])
