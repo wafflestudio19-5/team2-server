@@ -4,23 +4,23 @@ from user.models import User
 
 class Tweet(models.Model):
     TYPE = (
-        (1, 'regular'),
-        (2, 'reply'),
-        (3, 'retweet'),
-        (4, 'quote_retweet'),
+        ('GENERAL', 'general'),
+        ('REPLY', 'reply'),
+        ('RETWEET', 'retweet'),
+        ('QUOTE', 'quote_retweet'),
     )
 
-    tweet_type = models.PositiveSmallIntegerField(choices=TYPE)
+    tweet_type = models.CharField(choices=TYPE, max_length=10)
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tweets')
     retweeting_user = models.CharField(max_length=20, blank=True)
     reply_to = models.CharField(max_length=20, blank=True)
     # retweeting_user, reply_to : User.user_id
-    content = models.CharField(max_length=500)
+    content = models.CharField(max_length=500, blank=True)
     media = models.FileField()  # TODO connect to S3. (we store only urls/key in DB)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Reply(models.Model):
-    replied = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='replied_by')
+    replied = models.ForeignKey(Tweet, on_delete=models.SET_NULL, null=True, related_name='replied_by')
     replying = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='replying_to')
 
 class Retweet(models.Model):
@@ -28,6 +28,22 @@ class Retweet(models.Model):
     retweeting = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='retweeting')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='retweets')
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'retweeted'],
+                name='unique retweet'
+            )
+        ]
+
 class UserLike(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
     liked = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='liked_by')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'liked'],
+                name='unique like'
+            )
+        ]

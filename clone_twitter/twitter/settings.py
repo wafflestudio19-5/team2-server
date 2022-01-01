@@ -118,6 +118,9 @@ DATABASES = {
         'NAME': 'twitter_backend',  
         'USER': 'twitter-backend',
         'PASSWORD': DB_PASSWORD,
+        'TEST': {
+            'NAME': 'test_twitter_backend',
+        }
     }
 }
 

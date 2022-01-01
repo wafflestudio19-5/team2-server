@@ -73,4 +73,3 @@ class SocialAccount(models.Model):
     user = models.OneToOneField(get_user_model(), related_name='social_account', on_delete=models.CASCADE)
     type = models.CharField(choices=TYPES, max_length=10)
     account_id = models.IntegerField() # only for kakao login -> unique = true but.. if we add other social login then..
-
