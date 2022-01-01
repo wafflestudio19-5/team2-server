@@ -77,7 +77,7 @@ class UserLoginView(APIView): #login with user_id
 # TODO: Logout.. expire token and add blacklist.. ?
 
 class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
-    permission_classes = (permissions.AllowAny,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
 
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -96,7 +96,7 @@ class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using 
         return Response(status=status.HTTP_201_CREATED) #TODO: recommend user
 
 class UserUnfollowView(APIView):
-    permission_classes = (permissions.AllowAny,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
 
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -182,8 +182,6 @@ class KakaoCallbackView(APIView):
         # TODO: are you going to get user profile, too???
 
         # 3. connect kakao account - user
-        # user signed up with email -> enable kakao login
-
         # user signed up with kakao -> enable kakao login (Q. base login?)
         # case 1. user who has connected kakao account trying to login
         if SocialAccount.objects.filter(account_id=kakao_id).exsits():
