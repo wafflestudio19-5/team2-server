@@ -63,6 +63,8 @@ class TweetDetailView(APIView):     # open thread of the tweet
 
     def get(self, request, pk):
         tweet = get_object_or_404(Tweet, pk=pk)
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
         serializer = TweetDetailSerializer(tweet, context={'request': request})
         return Response(serializer.data)
 

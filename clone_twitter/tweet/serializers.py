@@ -46,6 +46,8 @@ class TweetSerializer(serializers.ModelSerializer):
 
     def get_user_retweet(self, tweet):
         me = self.context['request'].user
+        if me.is_anonymous:
+            return False
         user_retweet = tweet.retweeted_by.filter(user=me).count()
         return user_retweet == 1
 
@@ -54,6 +56,8 @@ class TweetSerializer(serializers.ModelSerializer):
 
     def get_user_like(self, tweet):
         me = self.context['request'].user
+        if me.is_anonymous:
+            return False
         user_like = tweet.liked_by.filter(user=me).count()
         return user_like == 1
 
@@ -77,6 +81,8 @@ class TweetDetailSerializer(serializers.ModelSerializer):
 
     def get_user_retweet(self, tweet):
         me = self.context['request'].user
+        if me.is_anonymous:
+            return False
         user_retweet = tweet.retweeted_by.filter(user=me).count()
         return user_retweet == 1
 
@@ -88,6 +94,8 @@ class TweetDetailSerializer(serializers.ModelSerializer):
 
     def get_user_like(self, tweet):
         me = self.context['request'].user
+        if me.is_anonymous:
+            return False
         user_like = tweet.liked_by.filter(user=me).count()
         return user_like == 1
 
