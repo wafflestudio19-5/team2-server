@@ -53,7 +53,7 @@ class EmailSignUpView(APIView):   #signup with email
         try:
             user, jwt_token = serializer.save()
         except IntegrityError:
-            return Response({"message": "unexpected db error"}, status=status.HTTP_409_CONFLICT)
+            return Response(status=status.HTTP_409_CONFLICT, data={"message": "unexpected db error"})
         return Response({'token': jwt_token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
 class UserLoginView(APIView): #login with user_id
@@ -92,7 +92,7 @@ class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using 
         try:
             follow_relation = serializer.save()
         except IntegrityError:
-            return Response(status=status.HTTP_409_CONFLICT, data='user already follows followee')
+            return Response(status=status.HTTP_409_CONFLICT, data={'message':'user already follows followee'})
         return Response(status=status.HTTP_201_CREATED) #TODO: recommend user
 
 class UserUnfollowView(APIView):
@@ -108,14 +108,14 @@ class UserUnfollowView(APIView):
     def delete(self, request):
         target_id = request.data.get('user_id', None)
         if target_id is None:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='you have specifiy user you want to unfollow')
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message':'you have specify user you want to unfollow'})
         try:
             following = User.objects.get(user_id=target_id)
             follow_relation = Follow.objects.get(follower=request.user, following=following)
         except User.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND, data='no such user exists')
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such user exists'})
         except Follow.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND, data='you can unfollow only currently following user')
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'you can unfollow only currently following user'})
         follow_relation.delete()
         return Response(status=status.HTTP_200_OK, data='successfully unfollowed')
 
