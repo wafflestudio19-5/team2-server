@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from tweet.models import Tweet, Reply, Retweet
+from tweet.models import Tweet, Reply, Retweet, UserLike
 from user.serializers import UserSerializer
 
 
@@ -175,4 +175,19 @@ class RetweetSerializer(serializers.Serializer):
 
         return True
 
+
+class LikeSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=True)
+
+    def create(self, validated_data):
+        tweet_id = validated_data.get('id')
+        try:
+            liked = Tweet.objects.get(id=tweet_id)
+        except Tweet.DoesNotExist:
+            return False
+
+        me = self.context['request'].user
+        user_like = UserLike.objects.create(user=me, liked=liked)
+
+        return True
 
