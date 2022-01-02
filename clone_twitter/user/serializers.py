@@ -158,3 +158,14 @@ class UserSerializer(serializers.ModelSerializer):
             'user_id',
             'profile_img',
         ]
+
+class UserRecommendSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username',
+            'user_id',
+            'profile_img',
+            'bio',
+            # Q. id ?
+        ]

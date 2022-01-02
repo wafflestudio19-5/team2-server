@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of
+from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError
 from user.models import Follow, User, SocialAccount
 import requests
@@ -205,3 +205,19 @@ class KakaoCallbackView(APIView):
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
             return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
+
+class UserRecommendView(APIView):  # recommend random ? users who I don't follow
+    queryset = Follow.objects.all()
+    serializer_class = UserRecommendSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/recommend/  TODO: Q. request.user? or specify..?
+    def get(self, request):
+        me = request.user
+        unfollowing_users = Follow.objects.exclude(follower=me)
+
+        if not unfollowing_users:
+            return []
+        recommending_users = [x.follower for x in unfollowing_users]
+        serializer = self.get_serializer(recommending_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
