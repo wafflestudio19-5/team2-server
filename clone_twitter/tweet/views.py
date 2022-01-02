@@ -161,7 +161,7 @@ class LikeView(APIView):       # do/cancel like
                 return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such tweet exists'})
         except IntegrityError:
             return Response(status=status.HTTP_409_CONFLICT, data={'message': 'you already liked this tweet'})
-        return Response(status=status.HTTP_201_CREATED, data={'message': 'successfully like this tweet'})
+        return Response(status=status.HTTP_201_CREATED, data={'message': 'successfully like'})
 
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
