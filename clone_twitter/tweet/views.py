@@ -6,8 +6,8 @@ from rest_framework import permissions, viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from tweet.models import Tweet, Retweet
-from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer
+from tweet.models import Tweet, Retweet, UserLike
+from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, LikeSerializer
 
 
 class TweetPostView(APIView):      # write & delete tweet
@@ -139,5 +139,52 @@ class RetweetView(APIView):       # do/cancel retweet
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'you have not retweeted this tweet'})
         retweeting.delete()
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel retweet'})
+
+
+class LikeView(APIView):       # do/cancel like
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='tweet_id'),
+        }
+    ))
+
+    def post(self, request):
+        serializer = LikeSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            success = serializer.save()
+            if not success:
+                return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such tweet exists'})
+        except IntegrityError:
+            return Response(status=status.HTTP_409_CONFLICT, data={'message': 'you already liked this tweet'})
+        return Response(status=status.HTTP_201_CREATED, data={'message': 'successfully like'})
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='tweet_id'),
+        }
+    ))
+
+    def delete(self, request):
+        me = request.user
+        tweet_id = request.data.get('id', None)
+        if tweet_id is None:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'you have specify tweet you want to like'})
+        try:
+            tweet = Tweet.objects.get(id=tweet_id)
+        except Tweet.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such tweet exists'})
+
+        try:
+            user_like = tweet.liked_by.get(user=me)
+        except UserLike.DoesNotExist:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'you have not liked this tweet'})
+        user_like.delete()
+        return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel like'})
 
 
