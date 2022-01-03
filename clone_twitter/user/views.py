@@ -1,5 +1,5 @@
 import json
-from user.utils import unique_random_id_generator
+from user.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
@@ -199,7 +199,8 @@ class KakaoCallbackView(APIView):
         # case 2. new user signup with kakao (might use profile info)
         else:
             random_id = unique_random_id_generator()
-            user = User(user_id=random_id)  # (tmp) user_id
+            fake_email = unique_random_email_generator()
+            user = User(user_id=random_id, email=fake_email)  # (tmp) user_id, fake email
             user.set_unusable_password()  # user signed up with kakao can only login via kakao login
             user.save()
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
