@@ -9,6 +9,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError
+from django.db.models import Q
 from user.models import Follow, User, SocialAccount
 import requests
 from twitter.settings import get_secret
@@ -207,17 +208,16 @@ class KakaoCallbackView(APIView):
             return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
-    queryset = Follow.objects.all()
-    serializer_class = UserRecommendSerializer
+    queryset = User.objects.all().reverse()
     permission_classes = (permissions.IsAuthenticated,)
 
     # GET /api/v1/recommend/  TODO: Q. request.user? or specify..?
     def get(self, request):
         me = request.user
-        unfollowing_users = Follow.objects.exclude(follower=me)
+        unfollowing_users = self.queryset.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
 
-        if not unfollowing_users:
-            return []
-        recommending_users = [x.follower for x in unfollowing_users]
-        serializer = self.get_serializer(recommending_users, many=True)
+        if unfollowing_users.count() < 3:
+            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+
+        serializer = UserRecommendSerializer(unfollowing_users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
