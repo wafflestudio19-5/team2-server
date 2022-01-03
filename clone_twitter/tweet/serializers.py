@@ -1,8 +1,17 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
-
 from tweet.models import Tweet, Reply, Retweet
-from user.serializers import UserSerializer
 
+User = get_user_model()
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username',
+            'user_id',
+            'profile_img',
+        ]
 
 class TweetWriteSerializer(serializers.Serializer):
     content = serializers.CharField(required=False, max_length=500)
@@ -24,7 +33,6 @@ class TweetWriteSerializer(serializers.Serializer):
         tweet = Tweet.objects.create(tweet_type=tweet_type, author=author, content=content, media=media)
 
         return tweet
-
 
 class TweetSerializer(serializers.ModelSerializer):
     class Meta:
@@ -107,7 +115,6 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         request = self.context['request']
         replying_tweets = TweetSerializer(replying, context={'request': request}, many=True)
         return replying_tweets.data
-
 
 class ReplySerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)

@@ -138,25 +138,6 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = UserFollowingSerializer(followings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class UserProfileViewSet(viewsets.GenericViewSet):
-    serializer_class = UserProfileSerializer
-    permission_classes = (permissions.AllowAny,)
-    
-    # GET /user/profile/
-    def retrieve(self, request, pk=None):
-        user = request.user
-
-        serializer = self.get_serializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    # PATCH /user/profile/
-    def partial_update(self, request, pk=None):
-        user = request.user
-
-        serializer = self.get_serializer(user, data=request.data, partial=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
 class UserInfoViewSet(viewsets.GenericViewSet):
     serializer_class = UserInfoSerializer
     permission_classes = (permissions.AllowAny,)
@@ -166,20 +147,37 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         if pk == 'me':
             user = request.user
         else:
-            user = get_object_or_404(User, pk=pk)
+            user = get_object_or_404(User, user_id=pk)
 
         serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-     # PATCH /user/id/
-    def partial_update(self, request, pk=None):
-        if pk != 'id':
-            return Response(status=status.HTTP_400_BAD_REQUEST, data='use /user/id/ to change your user id.')
-        
+    # PATCH /user/id/
+    @action(detail=False, methods=['patch'], name='Id')
+    def id(self, request):
         user = request.user
 
         serializer = self.get_serializer(user, data=request.data, partial=True)
-        serializer.save()
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # GET /user/profile/
+    @action(detail=False, methods=['get'], name='Profile')
+    def profile(self, request):
+        user = request.user
+
+        serializer = UserProfileSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PATCH /user/profile/
+    @profile.mapping.patch
+    def patch_profile(self, request):
+        user = request.user
+
+        serializer = UserProfileSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # Social Login : Kakao
@@ -192,7 +190,7 @@ class KakaoCallbackView(APIView):
 
     def get(self, request):
         # 1. get token
-        code = request.GET.get("code")   # TODO tell front (request / query param)
+        code = request.GET.get("code") # TODO tell front (request / query param)
         kakao_token_url = "https://kauth.kakao.com/oauth/token"
         data = {
             'grant_type': 'authorization_code',

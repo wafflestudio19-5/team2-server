@@ -2,8 +2,9 @@ from django.contrib.auth.models import update_last_login
 from rest_framework_jwt.settings import api_settings
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 import re
-from clone_twitter.tweet.serializers import TweetDetailSerializer
+from tweet.serializers import TweetSerializer
 from user.models import Follow
 
 # jwt token setting
@@ -151,12 +152,12 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
         )
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='username')
+    username = serializers.CharField()
     # TODO add image field after setting image server
-    # profile_img = serializers.ImageField(source='profile_img')
-    # header_img = serializers.ImageField(source='header_img)
-    bio = serializers.CharField(source='bio')
-    birth_date =serializers.DateField(source='birth_date')
+    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    # header_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    bio = serializers.CharField(allow_blank=True)
+    birth_date =serializers.DateField(allow_null=True)
 
     class Meta:
         model = User
@@ -168,24 +169,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'birth_date'
         )
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = [
-            'username',
-            'user_id',
-            'profile_img',
-        ]
 
 class UserInfoSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='username')
-    user_id = serializers.CharField(source='user_id')
+    username = serializers.CharField(max_length=50)
+    user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
     # TODO add image field after setting image server
-    # profile_img = serializers.ImageField(source='profile_img')
-    # header_img = serializers.ImageField(source='header_img)
-    bio = serializers.CharField(source='bio')
-    created_at = serializers.DateTimeField(source='created_at')
-    birth_date = serializers.DateField(source='birth_date')
+    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    # header_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    bio = serializers.CharField(allow_blank=True)
+    created_at = serializers.DateTimeField()
+    birth_date = serializers.DateField(allow_null=True)
     
     tweets = serializers.SerializerMethodField()
     tweets_num = serializers.SerializerMethodField()
@@ -210,7 +203,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
     def get_tweets(self, obj):
         tweets = obj.tweets.all()
-        serialized_tweets = TweetDetailSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
+        serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
         return serialized_tweets.data
 
     def get_tweets_num(self, obj):
@@ -226,13 +219,15 @@ class UserInfoSerializer(serializers.ModelSerializer):
     # only letters, digits, underscore(_) are allowed
     # https://help.twitter.com/ko/managing-your-account/change-twitter-handle
     def validate_user_id(self, value):
-        if len(value) < 4 or len(value) > 15:
-            raise serializers.ValidationError("you should use 4~15 letters for user_id")        
+        
         if not (value.isalnum() or value.replace('_', '').isalnum()):
             raise serializers.ValidationError("your user_id should only contain letters, digits and underscore")
-        
+        if self.context['request'].user.user_id == value:
+            raise serializers.ValidationError("your input is identical to your current user_id")
+
         return value
 
     def update(self, instance, validated_data):
         instance.user_id = validated_data.get('user_id', instance.user_id)
         return instance
+

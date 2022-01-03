@@ -1,10 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
-from user.views import PingPongView, EmailSignUpView, UserLoginView, UserFollowView, UserProfileViewSet, UserUnfollowView, FollowListViewSet
+from user.views import PingPongView, EmailSignUpView, UserInfoViewSet, UserLoginView, UserFollowView, UserUnfollowView, FollowListViewSet
 
 router = SimpleRouter()
 router.register('follow_list', FollowListViewSet, basename='follow_list')  # /api/v1/follow_list/
-router.register('user/profile', UserProfileViewSet, basename='user_profile') # /api/v1/user/profile/
+router.register('user', UserInfoViewSet, basename='user') # /api/v1/user/
 
 urlpatterns = [
     path('ping/', PingPongView.as_view(), name='ping'),  # /api/v1/ping/
