@@ -162,16 +162,19 @@ class UserInfoViewSet(viewsets.GenericViewSet):
             serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # GET /user/profile/
-    @action(detail=False, methods=['get'], name='Profile')
-    def profile(self, request):
-        user = request.user
+    # GET /user/{user_id}/profile/
+    @action(detail=True, methods=['get'], url_path='profile', url_name='profile')
+    def profile(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
 
         serializer = UserProfileSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # PATCH /user/profile/
-    @profile.mapping.patch
+    @action(detail=False, methods=['patch'], url_path='profile', url_name='profile')
     def patch_profile(self, request):
         user = request.user
 

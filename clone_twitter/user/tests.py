@@ -360,9 +360,19 @@ class GetUserProfileTestCase(TestCase):
             'birth_date': None
         }
 
-    def test_get_profile_success(self):
+    def test_get_profile_nonexistent_user(self):
         response = self.client.get(
-            '/api/v1/user/profile/',
+            '/api/v1/user/user4_id/profile/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_profile_success(self):
+
+        # get user's own profile
+        response = self.client.get(
+            '/api/v1/user/me/profile/',
             data={},
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
@@ -373,12 +383,12 @@ class GetUserProfileTestCase(TestCase):
         self.assertEqual(data['bio'], self.static_response_user1['bio'])
         self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
 
-        # get profile with blank data and null data
+        # get other user's profile with blank data and null data
         response = self.client.get(
-            '/api/v1/user/profile/',
+            '/api/v1/user/user2_id/profile/',
             data={},
             content_type='application/json',
-            HTTP_AUTHORIZATION=self.user2_token)
+            HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         data = response.json()
@@ -412,6 +422,7 @@ class PatchUserProfileTestCase(TestCase):
             'bio': '',
             'birth_date': None
         }
+
 
     # TODO include testcase with profile_img and header_img
     def test_patch_profile_success(self):
