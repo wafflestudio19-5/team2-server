@@ -175,11 +175,16 @@ class KakaoCallbackView(APIView):
         }
         response = requests.post(kakao_token_url, data=data).json()
         access_token = response.get("access_token")
+        if not access_token:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get access_token'})
 
         # 2. get user information
         user_info_url = "https://kapi.kakao.com/v2/user/me"
         user_info_response = requests.get(user_info_url, headers={"Authorization": f"Bearer ${access_token}"},).json()
         kakao_id = user_info_response.get("id")
+        if not kakao_id:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
+
         # TODO: are you going to get user profile, too???
 
         # 3. connect kakao account - user

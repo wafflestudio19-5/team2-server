@@ -9,6 +9,9 @@ __pycache__/
 # Secret files
 /clone_twitter/secrets.json
 
+# Logging
+/clone_twitter/logging
+
 # Static files
 /clone_twitter/static/
 
