@@ -221,3 +221,24 @@ class UserRecommendView(APIView):  # recommend random ? users who I don't follow
 
         serializer = UserRecommendSerializer(unfollowing_users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class FollowRecommendView(APIView):  # recommend random ? users who I don't follow
+    queryset = User.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/follow/{pk}/recommend/  tmp
+    def get(self, request, pk=None):
+        me = request.user
+        try:
+            new_following = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such user exists'})
+
+        followings = User.objects.filter(following__follower=new_following)
+        recommending_users = followings.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
+
+        if recommending_users.count() < 3:
+            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+
+        serializer = UserRecommendSerializer(recommending_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
