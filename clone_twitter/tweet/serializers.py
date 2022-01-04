@@ -1,8 +1,17 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
-
 from tweet.models import Tweet, Reply, Retweet, UserLike
-from user.serializers import UserSerializer
 
+User = get_user_model()
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username',
+            'user_id',
+            'profile_img',
+        ]
 
 class TweetWriteSerializer(serializers.Serializer):
     content = serializers.CharField(required=False, max_length=500)
@@ -25,6 +34,87 @@ class TweetWriteSerializer(serializers.Serializer):
 
         return tweet
 
+class TweetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tweet
+        fields = '__all__'
+
+    author = UserSerializer(read_only=True)
+    replies = serializers.SerializerMethodField()
+    retweets = serializers.SerializerMethodField()
+    user_retweet = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
+    user_like = serializers.SerializerMethodField()
+
+    def get_replies(self, tweet):
+        return tweet.replied_by.all().count()
+
+    def get_retweets(self, tweet):
+        return tweet.retweeted_by.all().count()
+
+    def get_user_retweet(self, tweet):
+        me = self.context['request'].user
+        user_retweet = tweet.retweeted_by.filter(user=me).count()
+        return user_retweet == 1
+
+    def get_likes(self, tweet):
+        return tweet.liked_by.all().count()
+
+    def get_user_like(self, tweet):
+        me = self.context['request'].user
+        user_like = tweet.liked_by.filter(user=me).count()
+        return user_like == 1
+
+
+class TweetDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tweet
+        fields = '__all__'
+
+    author = UserSerializer(read_only=True)
+    retweets = serializers.SerializerMethodField()
+    user_retweet = serializers.SerializerMethodField()
+    quotes = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
+    user_like = serializers.SerializerMethodField()
+    replied_tweet = serializers.SerializerMethodField()
+    replying_tweets = serializers.SerializerMethodField()
+
+    def get_retweets(self, tweet):
+        return tweet.retweeted_by.all().count()
+
+    def get_user_retweet(self, tweet):
+        me = self.context['request'].user
+        user_retweet = tweet.retweeted_by.filter(user=me).count()
+        return user_retweet == 1
+
+    def get_quotes(self, tweet):
+        return tweet.quoted_by.all().count()
+
+    def get_likes(self, tweet):
+        return tweet.liked_by.all().count()
+
+    def get_user_like(self, tweet):
+        me = self.context['request'].user
+        user_like = tweet.liked_by.filter(user=me).count()
+        return user_like == 1
+
+    def get_replied_tweet(self, tweet):
+        if tweet.tweet_type != 'REPLY':
+            return None
+        replied = tweet.replying_to.select_related('replied').get(replying=tweet)
+        request = self.context['request']
+        replied_tweet = TweetSerializer(replied.replied, context={'request': request})
+        return replied_tweet.data
+
+    def get_replying_tweets(self, tweet):
+        replying = tweet.replied_by.select_related('replying').all()
+        if not replying:
+            return []
+        replying = [x.replying for x in replying]
+        request = self.context['request']
+        replying_tweets = TweetSerializer(replying, context={'request': request}, many=True)
+        return replying_tweets.data
 
 class TweetSerializer(serializers.ModelSerializer):
     class Meta:

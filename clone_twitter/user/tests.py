@@ -1,6 +1,8 @@
+import datetime
 from django.test import TestCase
 
 from factory.django import DjangoModelFactory
+from tweet.models import Tweet
 
 from user.models import User, Follow
 from django.test import TestCase
@@ -20,6 +22,17 @@ class UserFactory(DjangoModelFactory):
         user.set_password(kwargs.get('password', ''))
         user.save()
         return user
+
+class TweetFactory(DjangoModelFactory):
+    class Meta:
+        model = Tweet
+    id = 1
+
+    @classmethod
+    def create(cls, **kwargs):
+        tweet = Tweet.objects.create(**kwargs)
+        tweet.save()
+        return tweet
 
 # Create your tests here.
 class PostUserTestCase(TestCase):
@@ -410,3 +423,384 @@ class GetRecommendTestCase(TestCase):
         self.assertEqual(data[2]['user_id'], "user6_id")
 
 
+class GetUserProfileTestCase(TestCase):
+    
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='I am User 1.',
+            birth_date=datetime.date(2002, 11, 15)
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+    
+        cls.user2 = UserFactory(
+            email='email2@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-2345-6789',
+            bio='', # blank
+            birth_date=None # null
+        )
+        cls.user2_token = 'JWT ' + jwt_token_of(User.objects.get(email='email2@email.com'))
+
+        cls.static_response_user1 = {
+            'username' : 'username',
+            'bio': 'I am User 1.',
+            'birth_date': '2002-11-15'
+        }
+
+        cls.static_response_user2 = {
+            'username' : 'username2',
+            'bio': '',
+            'birth_date': None
+        }
+
+    def test_get_profile_nonexistent_user(self):
+        response = self.client.get(
+            '/api/v1/user/user4_id/profile/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_profile_success(self):
+
+        # get user's own profile
+        response = self.client.get(
+            '/api/v1/user/me/profile/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_user1['username'])
+        self.assertEqual(data['bio'], self.static_response_user1['bio'])
+        self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
+
+        # get other user's profile with blank data and null data
+        response = self.client.get(
+            '/api/v1/user/user2_id/profile/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_user2['username'])
+        self.assertEqual(data['bio'], self.static_response_user2['bio'])
+        self.assertEqual(data['birth_date'], self.static_response_user2['birth_date'])
+
+class PatchUserProfileTestCase(TestCase):
+    
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='I am User 1.',
+            birth_date=datetime.date(2002, 11, 15)
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.static_response_patch1 = {
+            'username' : 'username2',
+            'bio': 'I am User 2.',
+            'birth_date': '2006-10-18'
+        }
+
+        cls.static_response_patch2 = {
+            'username' : 'username2',
+            'bio': '',
+            'birth_date': None
+        }
+
+
+    # TODO include testcase with profile_img and header_img
+    def test_patch_profile_success(self):
+        # all profile data included
+        response = self.client.patch(
+            '/api/v1/user/profile/',
+            data={
+                'username': 'username2',
+                'bio': 'I am User 2.',
+                'birth_date': datetime.date(2006, 10, 18)
+            },
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_patch1['username'])
+        self.assertEqual(data['bio'], self.static_response_patch1['bio'])
+        self.assertEqual(data['birth_date'], self.static_response_patch1['birth_date'])
+
+        # username unincluded & update data into blank or null
+        response = self.client.patch(
+            '/api/v1/user/profile/',
+            data={
+                'bio': '',
+                'birth_date': None
+            },
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_patch2['username'])
+        self.assertEqual(data['bio'], self.static_response_patch2['bio'])
+        self.assertEqual(data['birth_date'], self.static_response_patch2['birth_date'])
+
+class GetUserTestCase(TestCase):
+    
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='I am User 1.',
+            birth_date=datetime.date(2002, 11, 15)
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.user2 = UserFactory(
+            email='email2@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-2345-6789',
+            bio='', # blank
+            birth_date=None # null
+        )
+        cls.user2_token = 'JWT ' + jwt_token_of(User.objects.get(email='email2@email.com'))
+
+        cls.user3 = UserFactory(
+            email='email3@email.com',
+            user_id='user3_id',
+            username='username3',
+            password='password',
+            phone_number='010-3456-7890',
+            bio='I am User 3.',
+            birth_date=datetime.date(2006, 10, 18)
+        )
+        cls.user3_token = 'JWT ' + jwt_token_of(User.objects.get(email='email3@email.com'))
+
+        cls.tweet1 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user1,
+            content = 'content'
+        )
+
+        cls.tweet2 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user1,
+            content = 'content'
+        )
+
+        cls.static_response_user1 = {
+            'username' : 'username',
+            'user_id': 'user1_id',
+            'bio': 'I am User 1.',
+            'birth_date': '2002-11-15',
+            'tweets_num': 2,
+            'following': 0,
+            'follower': 2
+        }
+
+        cls.static_response_user2 = {
+            'username' : 'username2',
+            'user_id': 'user2_id',
+            'bio': '',
+            'birth_date': None,
+            'tweets_num': 0,
+            'following': 1,
+            'follower': 0
+        }
+
+        Follow.objects.create(follower=cls.user1, following=cls.user2)
+        Follow.objects.create(follower=cls.user1, following=cls.user3)
+
+    def test_get_info_nonexistent_user(self):
+        response = self.client.get(
+            '/api/v1/user/user4_id/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_info_success(self):
+        response = self.client.get(
+            '/api/v1/user/user1_id/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_user1['username'])
+        self.assertEqual(data['user_id'], self.static_response_user1['user_id'])
+        self.assertEqual(data['bio'], self.static_response_user1['bio'])
+        self.assertIn("created_at", data)
+        self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
+        self.assertEqual(data['tweets_num'], self.static_response_user1['tweets_num'])
+        self.assertEqual(data['following'], self.static_response_user1['following'])
+        self.assertEqual(data['follower'], self.static_response_user1['follower'])
+
+        # get info with blank data and null data
+        response = self.client.get(
+            '/api/v1/user/user2_id/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_user2['username'])
+        self.assertEqual(data['user_id'], self.static_response_user2['user_id'])
+        self.assertEqual(data['bio'], self.static_response_user2['bio'])
+        self.assertIn("created_at", data)
+        self.assertEqual(data['birth_date'], self.static_response_user2['birth_date'])
+        self.assertEqual(data['tweets_num'], self.static_response_user2['tweets_num'])
+        self.assertEqual(data['following'], self.static_response_user2['following'])
+        self.assertEqual(data['follower'], self.static_response_user2['follower'])
+
+        # get user's own info
+        response = self.client.get(
+            '/api/v1/user/me/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_user1['username'])
+        self.assertEqual(data['user_id'], self.static_response_user1['user_id'])
+        self.assertEqual(data['bio'], self.static_response_user1['bio'])
+        self.assertIn("created_at", data)
+        self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
+        self.assertEqual(data['tweets_num'], self.static_response_user1['tweets_num'])
+        self.assertEqual(data['following'], self.static_response_user1['following'])
+        self.assertEqual(data['follower'], self.static_response_user1['follower'])
+
+class PatchUserIDTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='I am User 1.',
+            birth_date=datetime.date(2002, 11, 15)
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+ 
+        cls.static_response_patch1 = {
+            'username' : 'username',
+            'user_id': 'user1',
+            'bio': 'I am User 1.',
+            'birth_date': '2002-11-15',
+            'tweets_num': 0,
+            'following': 0,
+            'follower': 0
+        }
+
+        cls.static_response_patch2 = {
+            'username' : 'username',
+            'user_id': 'user2_ID',
+            'bio': 'I am User 1.',
+            'birth_date': '2002-11-15',
+            'tweets_num': 0,
+            'following': 0,
+            'follower': 0
+        }
+
+    def test_patch_user_id_wrong_length(self):
+        # too short
+        response = self.client.patch(
+            '/api/v1/user/id/',
+            data={'user_id': 'use'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+ 
+        
+        # too long
+        response = self.client.patch(
+            '/api/v1/user/id/',
+            data={'user_id': 'useruseruseruser'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+ 
+
+    def test_patch_user_id_unallowed_letter(self):
+        # whitespace is not allowed
+        response = self.client.patch(
+            '/api/v1/user/id/',
+            data={'user_id': 'user1_ ID'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+ 
+
+    def test_patch_user_id_identical(self):
+        # cannot change into identical user_id
+        response = self.client.patch(
+            '/api/v1/user/id/',
+            data={'user_id': 'user1_id'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+ 
+
+    def test_patch_user_id_success(self):
+        # alphabets & digits
+        response = self.client.patch(
+            '/api/v1/user/id/',
+            data={'user_id': 'user1'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_patch1['username'])
+        self.assertEqual(data['user_id'], self.static_response_patch1['user_id'])
+        self.assertEqual(data['bio'], self.static_response_patch1['bio'])
+        self.assertIn("created_at", data)
+        self.assertEqual(data['birth_date'], self.static_response_patch1['birth_date'])
+        self.assertEqual(data['tweets_num'], self.static_response_patch1['tweets_num'])
+        self.assertEqual(data['following'], self.static_response_patch1['following'])
+        self.assertEqual(data['follower'], self.static_response_patch1['follower'])
+
+        # underscore(_) included
+        response = self.client.patch(
+            '/api/v1/user/id/',
+            data={'user_id': 'user2_ID'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertEqual(data['username'], self.static_response_patch2['username'])
+        self.assertEqual(data['user_id'], self.static_response_patch2['user_id'])
+        self.assertEqual(data['bio'], self.static_response_patch2['bio'])
+        self.assertIn("created_at", data)
+        self.assertEqual(data['birth_date'], self.static_response_patch2['birth_date'])
+        self.assertEqual(data['tweets_num'], self.static_response_patch2['tweets_num'])
+        self.assertEqual(data['following'], self.static_response_patch2['following'])
+        self.assertEqual(data['follower'], self.static_response_patch2['follower'])
