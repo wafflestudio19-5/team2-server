@@ -15,3 +15,11 @@ def unique_random_id_generator():
     if User.objects.filter(user_id=new_id):
         return unique_random_id_generator()
     return new_id
+
+def unique_random_email_generator():
+    new_email = random_string_generator().join('@invalid_email.com')
+
+    if User.objects.filter(email=new_email):
+        return unique_random_id_generator()
+    return new_email
+
