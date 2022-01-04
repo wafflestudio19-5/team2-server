@@ -17,9 +17,9 @@ def unique_random_id_generator():
     return new_id
 
 def unique_random_email_generator():
-    new_email = random_string_generator().join('@invalid_email.com')
+    new_email = random_string_generator().join('@fakeemail.com')
 
     if User.objects.filter(email=new_email):
-        return unique_random_id_generator()
+        return unique_random_email_generator()
     return new_email
 

@@ -42,7 +42,7 @@ SECRET_KEY = get_secret("SECRET_KEY")
 DEBUG = True
 DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', '13.125.169.97']
 
 
 # Application definition
