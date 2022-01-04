@@ -3,11 +3,7 @@ from django.test import TestCase
 from factory.django import DjangoModelFactory
 
 from user.models import User
-<<<<<<< HEAD
 from tweet.models import Tweet, Reply, Retweet, UserLike
-=======
-from tweet.models import Tweet, Reply, Retweet
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 from django.test import TestCase
 from django.db import transaction
 from rest_framework import status
@@ -339,11 +335,7 @@ class RetweetTestCase(TestCase):
 
     def test_retweet_multiple_times(self):
         data = self.post_data.copy()
-<<<<<<< HEAD
         self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-=======
-        response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
         with transaction.atomic():
             response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
@@ -358,11 +350,7 @@ class RetweetTestCase(TestCase):
 
     def test_retweet_delete(self):
         data = self.post_data.copy()
-<<<<<<< HEAD
         self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-=======
-        response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 
         # delete retweeting tweet
         response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
@@ -375,11 +363,7 @@ class RetweetTestCase(TestCase):
 
         # delete retweeted tweet
         data = self.post_data.copy()
-<<<<<<< HEAD
         self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-=======
-        response = self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 
         response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -455,13 +439,8 @@ class RetweetCancelTestCase(TestCase):
         data = response.json()
         self.assertEqual(data['message'], "you have specify source tweet you want to cancel retweet")
 
-<<<<<<< HEAD
     def test_retweet_cancel_does_not_exist(self):
         self.client.delete('/api/v1/tweet/', data={'id': self.source_tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-=======
-    def test_retweet_cancel_does_not_exist_retweet(self):
-        response = self.client.delete('/api/v1/tweet/', data={'id': self.source_tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 
         data = self.post_data.copy()
         response = self.client.delete('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
@@ -481,7 +460,6 @@ class RetweetCancelTestCase(TestCase):
         tweet_count = Tweet.objects.count()
         self.assertEqual(tweet_count, 1)
         retweet_count = Retweet.objects.count()
-<<<<<<< HEAD
         self.assertEqual(retweet_count, 0)
 
 
@@ -758,6 +736,3 @@ class LikeCancelTestCase(TestCase):
         self.assertEqual(tweet_count, 1)
         user_like_count = UserLike.objects.count()
         self.assertEqual(user_like_count, 0)
-=======
-        self.assertEqual(retweet_count, 0)
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7

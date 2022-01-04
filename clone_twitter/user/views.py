@@ -1,22 +1,13 @@
-<<<<<<< HEAD
 import json
 from user.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
-=======
-from django.shortcuts import get_object_or_404
-from rest_framework import serializers, status, permissions, viewsets
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-<<<<<<< HEAD
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, jwt_token_of, UserRecommendSerializer
-=======
-from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 from django.db import IntegrityError
 from django.db.models import Q
 from user.models import Follow, User, SocialAccount

@@ -1,16 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-from user.views import PingPongView, EmailSignUpView, UserLoginView, \
+from user.views import PingPongView, EmailSignUpView, UserInfoViewSet, UserLoginView, \
     UserFollowView, UserUnfollowView, FollowListViewSet, KakaoCallbackView, KaKaoSignInView, \
     UserRecommendView, FollowRecommendView
-=======
-from user.views import PingPongView, EmailSignUpView, UserInfoViewSet, UserLoginView, UserFollowView, UserUnfollowView, FollowListViewSet
->>>>>>> Stashed changes
-=======
-from user.views import PingPongView, EmailSignUpView, UserInfoViewSet, UserLoginView, UserFollowView, UserUnfollowView, FollowListViewSet
->>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 
 router = SimpleRouter()
 router.register('follow_list', FollowListViewSet, basename='follow_list')  # /api/v1/follow_list/
