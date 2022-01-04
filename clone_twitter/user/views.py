@@ -7,8 +7,9 @@ from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of
+from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError
+from django.db.models import Q
 from user.models import Follow, User, SocialAccount
 import requests
 from twitter.settings import get_secret
@@ -205,3 +206,39 @@ class KakaoCallbackView(APIView):
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
             return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
+
+class UserRecommendView(APIView):  # recommend random ? users who I don't follow
+    queryset = User.objects.all().reverse()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/recommend/  TODO: Q. request.user? or specify..?
+    def get(self, request):
+        me = request.user
+        unfollowing_users = self.queryset.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
+
+        if unfollowing_users.count() < 3:
+            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+
+        serializer = UserRecommendSerializer(unfollowing_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class FollowRecommendView(APIView):  # recommend random ? users who I don't follow
+    queryset = User.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/follow/{pk}/recommend/  tmp
+    def get(self, request, pk=None):
+        me = request.user
+        try:
+            new_following = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such user exists'})
+
+        followings = User.objects.filter(following__follower=new_following)
+        recommending_users = followings.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
+
+        if recommending_users.count() < 3:
+            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+
+        serializer = UserRecommendSerializer(recommending_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

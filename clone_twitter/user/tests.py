@@ -298,7 +298,7 @@ class GetFollowListTestCase(TestCase):
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        print(response.json())
+        #print(response.json())
 
     def test_get_following_success(self):
         response = self.client.get(
@@ -307,5 +307,106 @@ class GetFollowListTestCase(TestCase):
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        print(response.json())
+        #print(response.json())
+
+class GetRecommendTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.user2 = UserFactory(
+            email='email2@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+        )
+
+        cls.user3 = UserFactory(
+            email='email3@email.com',
+            user_id='user3_id',
+            username='username3',
+            password='password',
+        )
+        cls.user3_token = 'JWT ' + jwt_token_of(User.objects.get(email='email3@email.com'))
+
+        cls.user4 = UserFactory(
+            email='email4@email.com',
+            user_id='user4_id',
+            username='username4',
+            password='password',
+        )
+
+        cls.user5 = UserFactory(
+            email='email5@email.com',
+            user_id='user5_id',
+            username='username5',
+            password='password',
+        )
+
+        cls.user6 = UserFactory(
+            email='email6@email.com',
+            user_id='user6_id',
+            username='username6',
+            password='password',
+        )
+        Follow.objects.create(follower=cls.user1, following=cls.user2)
+        Follow.objects.create(follower=cls.user2, following=cls.user1)
+        Follow.objects.create(follower=cls.user3, following=cls.user1)
+        Follow.objects.create(follower=cls.user3, following=cls.user4)
+        Follow.objects.create(follower=cls.user3, following=cls.user6)
+        Follow.objects.create(follower=cls.user5, following=cls.user1)
+        Follow.objects.create(follower=cls.user5, following=cls.user2)
+        Follow.objects.create(follower=cls.user5, following=cls.user3)
+        Follow.objects.create(follower=cls.user5, following=cls.user4)
+        Follow.objects.create(follower=cls.user5, following=cls.user6)
+
+    def test_get_recommend_success(self):
+        response = self.client.get(
+            '/api/v1/recommend/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data[0]['user_id'], "user3_id")
+        self.assertEqual(data[1]['user_id'], "user4_id")
+        self.assertEqual(data[2]['user_id'], "user5_id")
+
+    def test_get_recommend_empty(self):
+        response = self.client.get(
+            '/api/v1/recommend/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user3_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['message'], "not enough users to recommend")
+
+    def test_get_recommend_fail(self):
+        # unauthorized
+        response = self.client.get(
+            '/api/v1/recommend/',
+            data={},
+            content_type='application/json',)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_follow_recommend_success(self):
+        response = self.client.get(
+            '/api/v1/follow/10/recommend/',   # user 5's pk : 10
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data[0]['user_id'], "user3_id")
+        self.assertEqual(data[1]['user_id'], "user4_id")
+        self.assertEqual(data[2]['user_id'], "user6_id")
+
 
