@@ -151,6 +151,7 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
              #'profile_img'
         )
 
+<<<<<<< HEAD
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -171,6 +172,8 @@ class UserRecommendSerializer(serializers.ModelSerializer):
             'bio',
             # Q. id ?
         ]
+=======
+>>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField()
     # TODO add image field after setting image server

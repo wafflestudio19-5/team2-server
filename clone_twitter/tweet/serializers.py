@@ -1,6 +1,10 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+<<<<<<< HEAD
 from tweet.models import Tweet, Reply, Retweet, UserLike
+=======
+from tweet.models import Tweet, Reply, Retweet
+>>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 
 User = get_user_model()
 
@@ -115,6 +119,7 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         request = self.context['request']
         replying_tweets = TweetSerializer(replying, context={'request': request}, many=True)
         return replying_tweets.data
+<<<<<<< HEAD
 
 class TweetSerializer(serializers.ModelSerializer):
     class Meta:
@@ -206,6 +211,8 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         replying_tweets = TweetSerializer(replying, context={'request': request}, many=True)
         return replying_tweets.data
 
+=======
+>>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 
 class ReplySerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)
@@ -266,6 +273,7 @@ class RetweetSerializer(serializers.Serializer):
         return True
 
 
+<<<<<<< HEAD
 class LikeSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)
 
@@ -281,3 +289,5 @@ class LikeSerializer(serializers.Serializer):
 
         return True
 
+=======
+>>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7

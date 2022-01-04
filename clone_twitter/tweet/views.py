@@ -6,6 +6,7 @@ from rest_framework import permissions, viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 from tweet.models import Tweet, Retweet, UserLike
 from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, LikeSerializer
@@ -13,6 +14,10 @@ from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSeri
 from tweet.models import Tweet, Retweet
 from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer
 >>>>>>> Stashed changes
+=======
+from tweet.models import Tweet, Retweet
+from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer
+>>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
 
 
 class TweetPostView(APIView):      # write & delete tweet
@@ -68,11 +73,14 @@ class TweetDetailView(APIView):     # open thread of the tweet
 
     def get(self, request, pk):
         tweet = get_object_or_404(Tweet, pk=pk)
+<<<<<<< HEAD
 <<<<<<< Updated upstream
         if tweet.tweet_type == 'RETWEET':
             tweet = tweet.retweeting.all()[0].retweeted
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
         serializer = TweetDetailSerializer(tweet, context={'request': request})
         return Response(serializer.data)
 
@@ -149,6 +157,7 @@ class RetweetView(APIView):       # do/cancel retweet
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel retweet'})
 
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 class LikeView(APIView):       # do/cancel like
     permission_classes = (permissions.IsAuthenticated,)
@@ -199,3 +208,5 @@ class LikeView(APIView):       # do/cancel like
 
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> 44f40378eb1d7f9c41f4ef7bde7f0ae477fe48a7
