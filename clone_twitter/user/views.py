@@ -198,7 +198,7 @@ class KakaoCallbackView(APIView):
         if kakao_account:
             user = kakao_account.first().user
             token = jwt_token_of(user)
-            redirect(FRONT_URL)
+            response = redirect(FRONT_URL)
             response['Authorization'] = "JWT " + token
             url = FRONT_URL + user.user_id
             redirect(url)
@@ -215,7 +215,7 @@ class KakaoCallbackView(APIView):
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
             url = FRONT_URL + user.user_id
-            redirect(url)
+            response = redirect(url)
             response['Authorization'] = "JWT " + token
             return response
             # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
