@@ -12,7 +12,7 @@ from django.db import IntegrityError
 from django.db.models import Q
 from user.models import Follow, User, SocialAccount
 import requests
-from twitter.settings import get_secret
+from twitter.settings import get_secret, FRONT_URL
 # Create your views here.
 
 class PingPongView(APIView):
@@ -26,6 +26,9 @@ class PingPongView(APIView):
     ))
 
     def get(self, request):
+        response = redirect(FRONT_URL)
+        response['Authorization'] = "JWT " + "hah"
+        return response
         return Response(data={'ping': 'pong'}, status=status.HTTP_200_OK)
 
 class EmailSignUpView(APIView):   #signup with email
@@ -129,7 +132,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
     def follower(self, request, pk=None):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, user_id=pk)
         followers = Follow.objects.filter(following=user) # TODO: order?
 
         serializer = self.get_serializer(followers, many=True)
@@ -138,7 +141,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     # GET /api/v1/follow_list/{lookup}/following/
     @action(detail=True, methods=['GET'])
     def following(self, request, pk=None):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, user_id=pk)
         followings = Follow.objects.filter(follower=user)  # TODO: order?
 
         serializer = UserFollowingSerializer(followings, many=True)
@@ -240,7 +243,12 @@ class KakaoCallbackView(APIView):
         if kakao_account:
             user = kakao_account.first().user
             token = jwt_token_of(user)
-            return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
+            response = redirect(FRONT_URL)
+            response['Authorization'] = "JWT " + token
+            url = FRONT_URL + user.user_id
+            redirect(url)
+            return response
+            # return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
 
         # case 2. new user signup with kakao (might use profile info)
         else:
@@ -251,7 +259,11 @@ class KakaoCallbackView(APIView):
             user.save()
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
-            return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
+            url = FRONT_URL + user.user_id
+            response = redirect(url)
+            response['Authorization'] = "JWT " + token
+            return response
+            # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
     queryset = User.objects.all().reverse()
