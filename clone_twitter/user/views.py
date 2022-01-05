@@ -132,7 +132,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
     def follower(self, request, pk=None):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, user_id=pk)
         followers = Follow.objects.filter(following=user) # TODO: order?
 
         serializer = self.get_serializer(followers, many=True)
@@ -141,7 +141,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     # GET /api/v1/follow_list/{lookup}/following/
     @action(detail=True, methods=['GET'])
     def following(self, request, pk=None):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, user_id=pk)
         followings = Follow.objects.filter(follower=user)  # TODO: order?
 
         serializer = UserFollowingSerializer(followings, many=True)
