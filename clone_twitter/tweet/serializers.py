@@ -113,9 +113,15 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         if tweet.tweet_type != 'REPLY':
             return None
         replied = tweet.replying_to.select_related('replied').get(replying=tweet)
+        if replied.replied is None:
+            return {'message': 'This Tweet was deleted by the Tweet author'}
         request = self.context['request']
         replied_tweet = TweetSerializer(replied.replied, context={'request': request})
-        return replied_tweet.data
+
+        data = replied_tweet.data
+        data['replied_tweet'] = self.get_replied_tweet(replied.replied)
+
+        return data
 
     def get_replying_tweets(self, tweet):
         replying = tweet.replied_by.select_related('replying').all()
