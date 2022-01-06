@@ -7,7 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tweet.models import Tweet, Retweet, UserLike
-from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, LikeSerializer
+from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, \
+    LikeSerializer, HomeSerializer
 
 
 class TweetPostView(APIView):      # write & delete tweet
@@ -188,3 +189,10 @@ class LikeView(APIView):       # do/cancel like
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel like'})
 
 
+class HomeView(APIView):     # home
+    permission_classes = (permissions.IsAuthenticated, )
+
+    def get(self, request):
+        me = request.user
+        serializer = HomeSerializer(me, context={'request': request})
+        return Response(serializer.data)

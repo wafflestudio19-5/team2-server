@@ -148,13 +148,3 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
              #'follows_me'
              #'profile_img'
         )
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = [
-            'username',
-            'user_id',
-            'profile_img',
-        ]
