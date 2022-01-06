@@ -149,7 +149,7 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
             'bio',
              #'follows_me'
              #'profile_img'
-          
+        )
 
 class UserRecommendSerializer(serializers.ModelSerializer):
     class Meta:
