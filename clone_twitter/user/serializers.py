@@ -2,7 +2,9 @@ from django.contrib.auth.models import update_last_login
 from rest_framework_jwt.settings import api_settings
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 import re
+from tweet.serializers import TweetSerializer
 from user.models import Follow
 
 # jwt token setting
@@ -169,3 +171,83 @@ class UserRecommendSerializer(serializers.ModelSerializer):
             'bio',
             # Q. id ?
         ]
+class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField()
+    # TODO add image field after setting image server
+    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    # header_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    bio = serializers.CharField(allow_blank=True)
+    birth_date =serializers.DateField(allow_null=True)
+
+    class Meta:
+        model = User
+        fields = ( 
+            'username',
+            #'profile_img',
+            #'header_img',
+            'bio',
+            'birth_date'
+        )
+
+
+class UserInfoSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(max_length=50)
+    user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
+    # TODO add image field after setting image server
+    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    # header_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    bio = serializers.CharField(allow_blank=True)
+    created_at = serializers.DateTimeField()
+    birth_date = serializers.DateField(allow_null=True)
+    
+    tweets = serializers.SerializerMethodField()
+    tweets_num = serializers.SerializerMethodField()
+    following = serializers.SerializerMethodField()
+    follower = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'user_id',
+            # 'profile_img',
+            # 'header_img',
+            'bio',
+            'created_at',
+            'birth_date',
+            'tweets',
+            'tweets_num',
+            'following',
+            'follower'
+        )
+
+    def get_tweets(self, obj):
+        tweets = obj.tweets.all()
+        serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
+        return serialized_tweets.data
+
+    def get_tweets_num(self, obj):
+        return obj.tweets.all().count()
+
+    def get_following(self, obj):
+        return obj.following.all().count()
+
+    def get_follower(self, obj):
+        return obj.follower.all().count() 
+
+    # at least 4, at most 15 letters
+    # only letters, digits, underscore(_) are allowed
+    # https://help.twitter.com/ko/managing-your-account/change-twitter-handle
+    def validate_user_id(self, value):
+        
+        if not (value.isalnum() or value.replace('_', '').isalnum()):
+            raise serializers.ValidationError("your user_id should only contain letters, digits and underscore")
+        if self.context['request'].user.user_id == value:
+            raise serializers.ValidationError("your input is identical to your current user_id")
+
+        return value
+
+    def update(self, instance, validated_data):
+        instance.user_id = validated_data.get('user_id', instance.user_id)
+        return instance
+

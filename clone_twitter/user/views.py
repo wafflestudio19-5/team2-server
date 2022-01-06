@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of, UserRecommendSerializer
+from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError
 from django.db.models import Q
 from user.models import Follow, User, SocialAccount
@@ -148,6 +148,51 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = UserFollowingSerializer(followings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class UserInfoViewSet(viewsets.GenericViewSet):
+    serializer_class = UserInfoSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    # GET /user/{user_user_id}/
+    def retrieve(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PATCH /user/id/
+    @action(detail=False, methods=['patch'], name='Id')
+    def id(self, request):
+        user = request.user
+
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # GET /user/{user_id}/profile/
+    @action(detail=True, methods=['get'], url_path='profile', url_name='profile')
+    def profile(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        serializer = UserProfileSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PATCH /user/profile/
+    @action(detail=False, methods=['patch'], url_path='profile', url_name='profile')
+    def patch_profile(self, request):
+        user = request.user
+
+        serializer = UserProfileSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 # Social Login : Kakao
 
 KAKAO_KEY = get_secret("CLIENT_ID")
@@ -168,7 +213,7 @@ class KakaoCallbackView(APIView):
 
     def get(self, request):
         # 1. get token
-        code = request.GET.get("code")   # TODO tell front (request / query param)
+        code = request.GET.get("code") # TODO tell front (request / query param)
         kakao_token_url = "https://kauth.kakao.com/oauth/token"
         data = {
             'grant_type': 'authorization_code',

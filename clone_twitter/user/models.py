@@ -38,8 +38,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'user_id'  #TODO
 
-    user_id = models.CharField(max_length=20, unique=True, db_index=True)  # ex) @waffle -> user_id = waffle
-    username = models.CharField(max_length=20)  # nickname ex) Waffle @1234 -> Waffle
+    user_id = models.CharField(max_length=15, unique=True, db_index=True)  # ex) @waffle -> user_id = waffle (up to length 15)
+    username = models.CharField(max_length=50)  # nickname ex) Waffle @1234 -> Waffle (up to length 50)
     email = models.EmailField(max_length=100, unique=True)
 
     phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{4}-[\d]{4}")  # another option: 1)validation with drf 2)external library
