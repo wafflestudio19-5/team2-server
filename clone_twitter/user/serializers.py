@@ -6,6 +6,7 @@ from rest_framework.validators import UniqueValidator
 import re
 from tweet.serializers import TweetSerializer
 from user.models import Follow
+from django.db.models import Q
 
 # jwt token setting
 User = get_user_model()
@@ -119,7 +120,8 @@ class UserFollowSerializer(serializers.ModelSerializer):    #TODO: merge followi
     username = serializers.CharField(source='follower.username')
     user_id = serializers.CharField(source='follower.user_id')
     bio = serializers.CharField(source='follower.bio')
-    # TODO profile img, follows me
+    profile_img = serializers.ImageField(source='follower.profile_img')
+    follows_me = serializers.SerializerMethodField()
 
     class Meta:
         model = Follow
@@ -128,9 +130,13 @@ class UserFollowSerializer(serializers.ModelSerializer):    #TODO: merge followi
             'username',
             'user_id',
             'bio',
-             #'follows_me'
-             #'profile_img'
+             'follows_me',
+             'profile_img',
         )
+
+    def get_follows_me(self, follow):
+        return True  # since this is follower list..
+
 
 
 class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
@@ -138,7 +144,8 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
     username = serializers.CharField(source='following.username')
     user_id = serializers.CharField(source='following.user_id')
     bio = serializers.CharField(source='following.bio')
-    # TODO profile img, follows me
+    profile_img = serializers.ImageField(source='following.profile_img')
+    follows_me = serializers.SerializerMethodField()
 
     class Meta:
         model = Follow
@@ -147,19 +154,15 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
             'username',
             'user_id',
             'bio',
-             #'follows_me'
-             #'profile_img'
+            'follows_me',
+            'profile_img',
         )
 
+    def get_follows_me(self, follow):
+        me = self.context['me']
+        follows_me = Follow.objects.filter(Q(follower=follow.following) & Q(following=me)).exists()
+        return follows_me
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = [
-            'username',
-            'user_id',
-            'profile_img',
-        ]
 
 class UserRecommendSerializer(serializers.ModelSerializer):
     class Meta:
@@ -171,6 +174,8 @@ class UserRecommendSerializer(serializers.ModelSerializer):
             'bio',
             # Q. id ?
         ]
+
+          
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField()
     # TODO add image field after setting image server
@@ -251,6 +256,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
         instance.user_id = validated_data.get('user_id', instance.user_id)
         return instance
 
+      
 class UserSearchInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
     user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])

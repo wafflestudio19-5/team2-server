@@ -29,9 +29,6 @@ class PingPongView(APIView):
     ))
 
     def get(self, request):
-        response = redirect(FRONT_URL)
-        response['Authorization'] = "JWT " + "hah"
-        return response
         return Response(data={'ping': 'pong'}, status=status.HTTP_200_OK)
 
 class EmailSignUpView(APIView):   #signup with email
@@ -112,8 +109,8 @@ class UserUnfollowView(APIView):
         }
     ))
 
-    def delete(self, request):
-        target_id = request.data.get('user_id', None)
+    def delete(self, request, user_id=None):  # unfollow/{target_id}/
+        target_id = user_id
         if target_id is None:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message':'you have specify user you want to unfollow'})
         try:
@@ -130,7 +127,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Follow.objects.all()
     serializer_class = UserFollowSerializer
     # TODO: 1. common serializer based on user model & manually make user list OR 2. separate 2serializers based on follow
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
@@ -146,8 +143,8 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     def following(self, request, pk=None):
         user = get_object_or_404(User, user_id=pk)
         followings = Follow.objects.filter(follower=user)  # TODO: order?
-
-        serializer = UserFollowingSerializer(followings, many=True)
+        me = request.user.pk
+        serializer = UserFollowingSerializer(followings, many=True, context={'me': me})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class UserInfoViewSet(viewsets.GenericViewSet):
@@ -196,13 +193,12 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # Social Login : Kakao
-# According to notion docs, front will get authorization code from kakao auth server
-# so backend has to get token from kakao api server
+
 KAKAO_KEY = get_secret("CLIENT_ID")
 REDIRECT_URI = get_secret("REDIRECT_URI")
 
-
-class KaKaoSignInView(APIView):  # front's job but for test..
+# get authorization code from kakao auth server
+class KaKaoSignInView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request):
@@ -210,7 +206,7 @@ class KaKaoSignInView(APIView):  # front's job but for test..
         response = redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={REDIRECT_URI}')
         return response
 
-
+# get access token from kakao api server
 class KakaoCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -228,16 +224,21 @@ class KakaoCallbackView(APIView):
         response = requests.post(kakao_token_url, data=data).json()
         access_token = response.get("access_token")
         if not access_token:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get access_token'})
+            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get access_token"
+            response = redirect(url)
+            return response
+            #return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get access_token'})
 
         # 2. get user information
         user_info_url = "https://kapi.kakao.com/v2/user/me"
         user_info_response = requests.get(user_info_url, headers={"Authorization": f"Bearer ${access_token}"},).json()
         kakao_id = user_info_response.get("id")
         if not kakao_id:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
+            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get kakao_id"
+            response = redirect(url)
+            return response
+            # return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
 
-        # TODO: are you going to get user profile, too???
 
         # 3. connect kakao account - user
         # user signed up with kakao -> enable kakao login (Q. base login?)
@@ -246,10 +247,8 @@ class KakaoCallbackView(APIView):
         if kakao_account:
             user = kakao_account.first().user
             token = jwt_token_of(user)
-            response = redirect(FRONT_URL)
-            response['Authorization'] = "JWT " + token
-            url = FRONT_URL + user.user_id
-            redirect(url)
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
+            response = redirect(url)
             return response
             # return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
 
@@ -262,9 +261,9 @@ class KakaoCallbackView(APIView):
             user.save()
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
-            url = FRONT_URL + user.user_id
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
-            response['Authorization'] = "JWT " + token
+            # response['Authorization'] = "JWT " + token
             return response
             # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 

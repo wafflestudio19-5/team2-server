@@ -1,6 +1,15 @@
+import os
+from random import randint
+
 from django.db import models
+from django.utils import timezone
+from django.utils.timezone import now
+
 from user.models import User
 
+def tweet_media_directory_path(instance, filename):
+    filename_base, filename_ext = os.path.splitext(filename)
+    return 'tweet/'+now().strftime('%Y%m%d_%H%M%S')+'_'+str(randint(10000000,99999999))+filename_ext
 
 class Tweet(models.Model):
     TYPE = (
@@ -16,8 +25,12 @@ class Tweet(models.Model):
     reply_to = models.CharField(max_length=20, blank=True)
     # retweeting_user, reply_to : User.user_id
     content = models.CharField(max_length=500, blank=True)
-    media = models.FileField()  # TODO connect to S3. (we store only urls/key in DB)
+    written_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class TweetMedia(models.Model):
+    media = models.FileField(upload_to=tweet_media_directory_path)
+    tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='media')
 
 class Reply(models.Model):
     replied = models.ForeignKey(Tweet, on_delete=models.SET_NULL, null=True, related_name='replied_by')
