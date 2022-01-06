@@ -32,12 +32,6 @@ class TweetPostView(APIView):      # write tweet
         return Response(status=status.HTTP_201_CREATED, data={'message': 'successfully write tweet'})
 
 
-class TweetDeleteView(APIView):     # delete tweet
-    permission_classes = (permissions.IsAuthenticated,)
-
-
-
-
 class TweetDetailView(APIView):     # open thread of the tweet
     permission_classes = (permissions.AllowAny, )
 
