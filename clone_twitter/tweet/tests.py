@@ -96,23 +96,6 @@ class PostTweetTestCase(TestCase):
         tweet_count = Tweet.objects.count()
         self.assertEqual(tweet_count, 1)
 
-        # # there is only media
-        # data.pop('content')
-        # response = self.client.post('/api/v1/tweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-        # self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        #
-        # tweet_count = Tweet.objects.count()
-        # self.assertEqual(tweet_count, 2)
-        #
-        # # there is only content
-        # data = self.post_data.copy()
-        # data.pop('media')
-        # response = self.client.post('/api/v1/tweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-        # self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        #
-        # tweet_count = Tweet.objects.count()
-        # self.assertEqual(tweet_count, 3)
-
 
 class DeleteTweetTestCase(TestCase):
 
@@ -154,27 +137,24 @@ class DeleteTweetTestCase(TestCase):
         tweets = Tweet.objects.all()
         tweet = tweets[0]
         retweet = tweets[1]
-        response = self.client.delete('/api/v1/tweet/', data={'id': tweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.other_token)
+        response = self.client.delete('/api/v1/tweet/' + str(tweet.id) + '/', HTTP_AUTHORIZATION=self.other_token)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.delete('/api/v1/tweet/', data={'id': retweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.other_token)
+        response = self.client.delete('/api/v1/tweet/' + str(retweet.id) + '/', HTTP_AUTHORIZATION=self.other_token)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_delete_tweet_wrong_id(self):
-        response = self.client.delete('/api/v1/tweet/', data={'id': -1}, content_type='application/json', HTTP_AUTHORIZATION=self.other_token)
+        response = self.client.delete('/api/v1/tweet/-1/', HTTP_AUTHORIZATION=self.other_token)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-        response = self.client.delete('/api/v1/tweet/', data={'wrong': 'a'}, content_type='application/json', HTTP_AUTHORIZATION=self.other_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_delete_tweet_success(self):
         tweets = Tweet.objects.all()
         tweet = tweets[0]
         retweet = tweets[1]
-        response = self.client.delete('/api/v1/tweet/', data={'id': tweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.author_token)
+        response = self.client.delete('/api/v1/tweet/' + str(tweet.id) + '/', HTTP_AUTHORIZATION=self.author_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.delete('/api/v1/tweet/', data={'id': retweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.author_token)
+        response = self.client.delete('/api/v1/tweet/' + str(retweet.id) + '/', HTTP_AUTHORIZATION=self.author_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
@@ -247,33 +227,12 @@ class ReplyTestCase(TestCase):
         reply_count = Reply.objects.count()
         self.assertEqual(reply_count, 1)
 
-        # # there is only media
-        # data.pop('content')
-        # response = self.client.post('/api/v1/reply/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-        # self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        #
-        # tweet_count = Tweet.objects.count()
-        # self.assertEqual(tweet_count, 3)
-        # reply_count = Reply.objects.count()
-        # self.assertEqual(reply_count, 2)
-        #
-        # # there is only content
-        # data = self.post_data.copy()
-        # data.pop('media')
-        # response = self.client.post('/api/v1/reply/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-        # self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        #
-        # tweet_count = Tweet.objects.count()
-        # self.assertEqual(tweet_count, 4)
-        # reply_count = Reply.objects.count()
-        # self.assertEqual(reply_count, 3)
-
     def test_reply_delete(self):
         data = self.post_data.copy()
         response = self.client.post('/api/v1/reply/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
 
         # delete replied tweet
-        response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/tweet/' + str(self.tweet.id) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         tweet_count = Tweet.objects.count()
@@ -282,7 +241,7 @@ class ReplyTestCase(TestCase):
         self.assertEqual(reply_count, 1)
 
         # delete replying tweet
-        response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/tweet/' + str(self.tweet.id + 1) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         tweet_count = Tweet.objects.count()
@@ -364,7 +323,7 @@ class RetweetTestCase(TestCase):
         self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
 
         # delete retweeting tweet
-        response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/tweet/' + str(self.tweet.id + 1) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         tweet_count = Tweet.objects.count()
@@ -376,7 +335,7 @@ class RetweetTestCase(TestCase):
         data = self.post_data.copy()
         self.client.post('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
 
-        response = self.client.delete('/api/v1/tweet/', data={'id': self.tweet.id}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/tweet/' + str(self.tweet.id) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         tweet_count = Tweet.objects.count()
@@ -430,39 +389,22 @@ class RetweetCancelTestCase(TestCase):
         tweets = Tweet.objects.all()
         cls.source_tweet = tweets[0]
 
-        cls.post_data = {
-            'source_id': cls.source_tweet.id,
-        }
 
     def test_retweet_cancel_wrong_source_id(self):
-        data = self.post_data.copy()
-        data['source_id'] = -1
-        response = self.client.delete('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/retweet/-1/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_retweet_cancel_missing_required_field(self):
-        # No source_id
-        data = self.post_data.copy()
-        data.pop('source_id')
-        response = self.client.delete('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        data = response.json()
-        self.assertEqual(data['message'], "you have specify source tweet you want to cancel retweet")
-
     def test_retweet_cancel_does_not_exist(self):
-        self.client.delete('/api/v1/tweet/', data={'id': self.source_tweet.id + 1}, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.client.delete('/api/v1/tweet/' + str(self.source_tweet.id + 1) + '/', HTTP_AUTHORIZATION=self.user_token)
 
-        data = self.post_data.copy()
-        response = self.client.delete('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/retweet/' + str(self.source_tweet.id) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         data = response.json()
         self.assertEqual(data['message'], "you have not retweeted this tweet")
 
     def test_retweet_cancel_success(self):
-        data = self.post_data.copy()
-        response = self.client.delete('/api/v1/retweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/retweet/' + str(self.source_tweet.id) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
@@ -527,13 +469,13 @@ class TweetDetailTestCase(TestCase):
         self.assertIsNotNone(author)
         self.assertEqual(author['username'], 'username1')
         self.assertEqual(author['user_id'], 'user1_id')
-        self.assertIsNone(author['profile_img'])
+        # self.assertIsNone(author['profile_img'])
 
         self.assertEqual(data['tweet_type'], 'REPLY')
         self.assertEqual(data['retweeting_user'], '')
         self.assertEqual(data['reply_to'], 'user1_id')
         self.assertEqual(data['content'], 'content')
-        self.assertIsNone(data['media'])
+        self.assertEqual(data['media'], [])
         self.assertIn('written_at', data)
         self.assertEqual(data['retweets'], 1)
         self.assertFalse(data['user_retweet'])
@@ -551,13 +493,13 @@ class TweetDetailTestCase(TestCase):
         self.assertIsNotNone(author)
         self.assertEqual(author['username'], 'username1')
         self.assertEqual(author['user_id'], 'user1_id')
-        self.assertIsNone(author['profile_img'])
+        # self.assertIsNone(author['profile_img'])
 
         self.assertEqual(replied_tweet['tweet_type'], 'GENERAL')
         self.assertEqual(replied_tweet['retweeting_user'], '')
         self.assertEqual(replied_tweet['reply_to'], '')
         self.assertEqual(replied_tweet['content'], 'content')
-        self.assertIsNone(replied_tweet['media'])
+        self.assertEqual(replied_tweet['media'], [])
         self.assertIn('written_at', replied_tweet)
         self.assertEqual(replied_tweet['replies'], 1)
         self.assertEqual(replied_tweet['retweets'], 0)
@@ -576,10 +518,10 @@ class TweetDetailTestCase(TestCase):
         self.assertIsNotNone(author)
         self.assertEqual(author['username'], 'username2')
         self.assertEqual(author['user_id'], 'user2_id')
-        self.assertIsNone(author['profile_img'])
+        # self.assertIsNone(author['profile_img'])
 
         self.assertEqual(replying_tweet['content'], 'content')
-        self.assertIsNone(replying_tweet['media'])
+        self.assertEqual(replying_tweet['media'], [])
         self.assertIn('written_at', replying_tweet)
         self.assertEqual(replying_tweet['replies'], 0)
         self.assertEqual(replying_tweet['retweets'], 0)
@@ -665,7 +607,7 @@ class LikeTestCase(TestCase):
         self.client.post('/api/v1/like/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
 
         # delete liked tweet
-        response = self.client.delete('/api/v1/tweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/tweet/' + str(data['id']) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         tweet_count = Tweet.objects.count()
@@ -711,24 +653,12 @@ class LikeCancelTestCase(TestCase):
         }
 
     def test_like_cancel_wrong_source_id(self):
-        data = self.post_data.copy()
-        data['id'] = -1
-        response = self.client.delete('/api/v1/like/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/like/-1/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_like_cancel_missing_required_field(self):
-        # No tweet_id
-        data = self.post_data.copy()
-        data.pop('id')
-        response = self.client.delete('/api/v1/like/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        data = response.json()
-        self.assertEqual(data['message'], "you have specify tweet you want to like")
 
     def test_like_cancel_does_not_exist(self):
         data = self.post_data.copy()
-        response = self.client.delete('/api/v1/like/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/like/' + str(data['id']) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         data = response.json()
@@ -737,7 +667,7 @@ class LikeCancelTestCase(TestCase):
     def test_like_cancel_success(self):
         data = self.post_data.copy()
         self.client.post('/api/v1/like/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
-        response = self.client.delete('/api/v1/like/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        response = self.client.delete('/api/v1/like/' + str(data['id']) + '/', HTTP_AUTHORIZATION=self.user_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
@@ -802,7 +732,7 @@ class HomeTestCase(TestCase):
         self.assertIsNotNone(user)
         self.assertEqual(user['username'], 'username3')
         self.assertEqual(user['user_id'], 'user3_id')
-        self.assertIsNone(user['profile_img'])
+        # self.assertIsNone(user['profile_img'])
 
         tweets = data['tweets']
         self.assertIsNotNone(tweets)
@@ -817,7 +747,7 @@ class HomeTestCase(TestCase):
         self.assertIsNotNone(user)
         self.assertEqual(user['username'], 'username1')
         self.assertEqual(user['user_id'], 'user1_id')
-        self.assertIsNone(user['profile_img'])
+        # self.assertIsNone(user['profile_img'])
 
         tweets = data['tweets']
         self.assertIsNotNone(tweets)
@@ -829,13 +759,13 @@ class HomeTestCase(TestCase):
         self.assertIsNotNone(author)
         self.assertEqual(author['username'], 'username1')
         self.assertEqual(author['user_id'], 'user1_id')
-        self.assertIsNone(author['profile_img'])
+        # self.assertIsNone(author['profile_img'])
 
         self.assertEqual(tweet['tweet_type'], 'GENERAL')
         self.assertEqual(tweet['retweeting_user'], '')
         self.assertEqual(tweet['reply_to'], '')
         self.assertEqual(tweet['content'], 'content')
-        self.assertIsNone(tweet['media'])
+        self.assertEqual(tweet['media'], [])
         self.assertIn('written_at', tweet)
         self.assertEqual(tweet['replies'], 0)
         self.assertEqual(tweet['retweets'], 0)
@@ -864,7 +794,7 @@ class HomeTestCase(TestCase):
         self.assertIsNotNone(user)
         self.assertEqual(user['username'], 'username2')
         self.assertEqual(user['user_id'], 'user2_id')
-        self.assertIsNone(user['profile_img'])
+        # self.assertIsNone(user['profile_img'])
 
         tweets = data['tweets']
         self.assertIsNotNone(tweets)
@@ -877,13 +807,13 @@ class HomeTestCase(TestCase):
         self.assertIsNotNone(author)
         self.assertEqual(author['username'], 'username2')
         self.assertEqual(author['user_id'], 'user2_id')
-        self.assertIsNone(author['profile_img'])
+        # self.assertIsNone(author['profile_img'])
 
         self.assertEqual(my_tweet['tweet_type'], 'GENERAL')
         self.assertEqual(my_tweet['retweeting_user'], '')
         self.assertEqual(my_tweet['reply_to'], '')
         self.assertEqual(my_tweet['content'], 'content22')
-        self.assertIsNone(my_tweet['media'])
+        self.assertEqual(my_tweet['media'], [])
         self.assertIn('written_at', my_tweet)
         self.assertEqual(my_tweet['replies'], 0)
         self.assertEqual(my_tweet['retweets'], 0)
@@ -897,13 +827,13 @@ class HomeTestCase(TestCase):
         self.assertIsNotNone(author)
         self.assertEqual(author['username'], 'username1')
         self.assertEqual(author['user_id'], 'user1_id')
-        self.assertIsNone(author['profile_img'])
+        # self.assertIsNone(author['profile_img'])
 
         self.assertEqual(following_tweet['tweet_type'], 'GENERAL')
         self.assertEqual(following_tweet['retweeting_user'], '')
         self.assertEqual(following_tweet['reply_to'], '')
         self.assertEqual(following_tweet['content'], 'content')
-        self.assertIsNone(following_tweet['media'])
+        self.assertEqual(following_tweet['media'], [])
         self.assertIn('written_at', following_tweet)
         self.assertEqual(following_tweet['replies'], 0)
         self.assertEqual(following_tweet['retweets'], 0)
