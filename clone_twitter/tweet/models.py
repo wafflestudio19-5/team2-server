@@ -11,12 +11,12 @@ def tweet_media_directory_path(instance, filename):
     filename_base, filename_ext = os.path.splitext(filename)
     return 'tweet/'+now().strftime('%Y%m%d_%H%M%S')+'_'+str(randint(10000000,99999999))+filename_ext
 
+
 class Tweet(models.Model):
     TYPE = (
         ('GENERAL', 'general'),
         ('REPLY', 'reply'),
         ('RETWEET', 'retweet'),
-        ('QUOTE', 'quote_retweet'),
     )
 
     tweet_type = models.CharField(choices=TYPE, max_length=10)
@@ -28,13 +28,16 @@ class Tweet(models.Model):
     written_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class TweetMedia(models.Model):
     media = models.FileField(upload_to=tweet_media_directory_path)
     tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='media')
 
+
 class Reply(models.Model):
     replied = models.ForeignKey(Tweet, on_delete=models.SET_NULL, null=True, related_name='replied_by')
     replying = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='replying_to')
+
 
 class Retweet(models.Model):
     retweeted = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='retweeted_by')
@@ -49,10 +52,11 @@ class Retweet(models.Model):
             )
         ]
 
+
 class Quote(models.Model):
-    quoted = models.ForeignKey(Tweet, on_delete=models.SET_NULL, null=True, related_name='quoted_by')
+    quoted = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='quoted_by')
     quoting = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='quoting')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quotes')
+
 
 class UserLike(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
