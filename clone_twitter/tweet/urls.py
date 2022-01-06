@@ -1,9 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from tweet.views import TweetPostView, ReplyView, RetweetView, TweetDetailView, LikeView, HomeView, RetweetCancelView, UnlikeView, QuoteView
+from tweet.views import TweetPostView, ReplyView, RetweetView, TweetDetailView, LikeView, HomeView, RetweetCancelView, UnlikeView, ThreadViewSet, QuoteView
 
 router = SimpleRouter()
+router.register('tweet', ThreadViewSet, basename='thread')                          # /api/v1/tweet/
 
 urlpatterns = [
     path('tweet/', TweetPostView.as_view(), name='post'),                           # /api/v1/tweet/
@@ -15,4 +16,5 @@ urlpatterns = [
     path('like/', LikeView.as_view(), name='like'),                                 # /api/v1/like/
     path('like/<int:pk>/', UnlikeView.as_view(), name='unlike'),                    # /api/v1/like/
     path('home/', HomeView.as_view(), name='home'),                                 # /api/v1/home/
+    path('', include(router.urls))
 ]

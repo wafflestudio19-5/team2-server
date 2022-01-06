@@ -16,8 +16,27 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
 
-def tweet_paginator(tweet_list, n, request):
-    paginator = Paginator(tweet_list, n)
+class UserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username',
+            'user_id',
+            'profile_img',
+            'bio',
+            'following',
+        ]
+
+    following = serializers.SerializerMethodField()
+
+    def get_following(self, user):
+        me = self.context['request'].user
+        following = user.following.filter(follower=me).count()
+        return following == 1
+
+
+def custom_paginator(obj_list, n, request):
+    paginator = Paginator(obj_list, n)
     page = request.GET.get('page')
     try:
         tweets = paginator.get_page(page)
@@ -188,7 +207,7 @@ class TweetDetailSerializer(serializers.ModelSerializer):
             return []
         replying_list = [x.replying for x in replying]
         request = self.context['request']
-        replying, previous_page, next_page = tweet_paginator(replying_list, 10, request)
+        replying, previous_page, next_page = custom_paginator(replying_list, 10, request)
         serializer = TweetSerializer(replying, context={'request': request}, many=True)
         data = serializer.data
 
@@ -349,7 +368,7 @@ class HomeSerializer(serializers.Serializer):
 
         tweet_list = Tweet.objects.filter(q).order_by('-created_at')
         request = self.context['request']
-        tweets, previous_page, next_page = tweet_paginator(tweet_list, 10, request)
+        tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
         data = serializer.data
 
