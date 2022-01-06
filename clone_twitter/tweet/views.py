@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tweet.models import Tweet, Retweet, UserLike
-from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, LikeSerializer, HomeSerializer
+from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, LikeSerializer, HomeSerializer, QuoteSerializer
 
 
 class TweetPostView(APIView):      # write tweet
@@ -52,9 +52,9 @@ class TweetDetailView(APIView):     # open thread of the tweet
         if (tweet.tweet_type != 'RETWEET' and tweet.author != me) or (tweet.tweet_type == 'RETWEET' and tweet.retweeting_user != me.user_id):
             return Response(status=status.HTTP_403_FORBIDDEN, data={'message': 'you can delete only your tweets'})
 
-        retweetings = tweet.retweeted_by.all()
-        for retweeting in retweetings:
-            retweeting.retweeting.delete()
+        retweets = tweet.retweeted_by.select_related('retweeting').all()
+        for retweet in retweets:
+            retweet.retweeting.delete()
 
         tweet.delete()
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully delete tweet'})
@@ -120,6 +120,31 @@ class RetweetCancelView(APIView):     # cancel retweet
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'you have not retweeted this tweet'})
         retweeting.delete()
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel retweet'})
+
+
+class QuoteView(APIView):            # quote-retweet
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='tweet_id'),
+            'content': openapi.Schema(type=openapi.TYPE_STRING, description='content'),
+            'media': openapi.Schema(type=openapi.TYPE_FILE, description='media'),
+        }
+    ))
+
+    def post(self, request):
+        serializer = QuoteSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            success = serializer.save()
+            if not success:
+                return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such tweet exists'})
+        except IntegrityError:
+            return Response(status=status.HTTP_409_CONFLICT)
+        return Response(status=status.HTTP_201_CREATED, data={'message': 'successfully quote and retweet'})
 
 
 class LikeView(APIView):       # do like

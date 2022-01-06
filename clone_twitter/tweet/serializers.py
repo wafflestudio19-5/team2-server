@@ -2,8 +2,7 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia
-
+from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia, Quote
 
 User = get_user_model()
 
@@ -50,10 +49,23 @@ class TweetWriteSerializer(serializers.Serializer):
         tweet_type = 'GENERAL'
         author = self.context['request'].user
         content = validated_data.get('content', '')
-        media_list = self.context['request'].FILES.getlist('media')
+
+        last_word = content.split(' ')[-1]
+        if 'dyzs1883jjmms.cloudfront.net/status/' in last_word:
+            tweet_id =  int(last_word.split('/')[-1])
+            if len(Tweet.objects.filter(id=tweet_id)):
+                quoted = Tweet.objects.get(id=tweet_id)
+            else:
+                quoted = None
+        else:
+            quoted = None
 
         tweet = Tweet.objects.create(tweet_type=tweet_type, author=author, content=content)
 
+        if quoted is not None:
+            quote = Quote.objects.create(quoted=quoted, quoting=tweet)
+
+        media_list = self.context['request'].FILES.getlist('media')
         for media in media_list:
             tweet_media = TweetMedia.objects.create(media=media, tweet=tweet)
 
@@ -196,7 +208,6 @@ class ReplySerializer(serializers.Serializer):
             raise serializers.ValidationError("neither content nor media")
         return data
 
-
     def create(self, validated_data):
         tweet_id = validated_data.get('id')
         try:
@@ -208,11 +219,24 @@ class ReplySerializer(serializers.Serializer):
         author = self.context['request'].user
         reply_to = replied.author.user_id
         content = validated_data.get('content', '')
-        media_list = self.context['request'].FILES.getlist('media')
+
+        last_word = content.split(' ')[-1]
+        if 'dyzs1883jjmms.cloudfront.net/status/' in last_word:
+            tweet_id = int(last_word.split('/')[-1])
+            if len(Tweet.objects.filter(id=tweet_id)):
+                quoted = Tweet.objects.get(id=tweet_id)
+            else:
+                quoted = None
+        else:
+            quoted = None
 
         replying = Tweet.objects.create(tweet_type=tweet_type, author=author, reply_to=reply_to, content=content)
         reply = Reply.objects.create(replied=replied, replying=replying)
 
+        if quoted is not None:
+            quote = Quote.objects.create(quoted=quoted, quoting=replying)
+
+        media_list = self.context['request'].FILES.getlist('media')
         for media in media_list:
             tweet_media = TweetMedia.objects.create(media=media, tweet=replying)
 
@@ -246,6 +270,39 @@ class RetweetSerializer(serializers.Serializer):
         media_list = retweeted.media.all()
         for media in media_list:
             tweet_media = TweetMedia.objects.create(media=media.media, tweet=retweeting)
+
+        return True
+
+
+class QuoteSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=True)
+    content = serializers.CharField(required=False, max_length=500)
+
+    def validate(self, data):
+        content = data.get('content', '')
+        media = self.context['request'].FILES.getlist('media')
+        if not content and not media:
+            raise serializers.ValidationError("neither content nor media")
+        return data
+
+    def create(self, validated_data):
+        tweet_id = validated_data.get('id')
+        try:
+            quoted = Tweet.objects.get(id=tweet_id)
+        except Tweet.DoesNotExist:
+            return False
+
+        tweet_type = 'GENERAL'
+        author = self.context['request'].user
+        content = validated_data.get('content', '')
+        content += ' dyzs1883jjmms.cloudfront.net/status/' + str(quoted.id)
+        media_list = self.context['request'].FILES.getlist('media')
+
+        quoting = Tweet.objects.create(tweet_type=tweet_type, author=author, content=content)
+        quote = Quote.objects.create(quoted=quoted, quoting=quoting)
+
+        for media in media_list:
+            tweet_media = TweetMedia.objects.create(media=media, tweet=quoting)
 
         return True
 
