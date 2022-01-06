@@ -229,7 +229,6 @@ class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
             tweet = tweet.retweeting.all()[0].retweeted
 
         quotes = tweet.quoted_by.all()
-        print(quotes)
         tweet_list = [x.quoting for x in quotes]
         tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
