@@ -81,6 +81,21 @@ class UserLoginView(APIView): #login with user_id
 
 # TODO: Logout.. expire token and add blacklist.. ?
 
+class UserDeactivateView(APIView): # deactivate
+    permission_classes = (permissions.IsAuthenticated, )
+
+    def delete(self, request):
+        # related retweet
+        me = request.user
+        if hasattr(me, 'social_account'):
+            return Response({'message': "social login user cannot deactivate account via this api"}, status=status.HTTP_400_BAD_REQUEST)
+        retweets = me.retweets.select_related('retweeting').all()
+        for retweet in retweets:
+            retweet.retweeting.delete()
+
+        me.delete()
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
 class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
     permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
 
