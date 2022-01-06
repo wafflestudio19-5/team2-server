@@ -1,7 +1,9 @@
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia
+
 
 User = get_user_model()
 
@@ -13,6 +15,13 @@ class UserSerializer(serializers.ModelSerializer):
             'user_id',
             'profile_img',
         ]
+
+
+def tweet_paginator(tweets, n, request):
+    paginator = Paginator(tweets, n)
+    page = request.GET.get('page')
+    return paginator.get_page(page)
+
 
 class TweetWriteSerializer(serializers.Serializer):
     content = serializers.CharField(required=False, max_length=500)
@@ -149,8 +158,9 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         replying = tweet.replied_by.select_related('replying').all()
         if not replying:
             return []
-        replying = [x.replying for x in replying]
+        replying_list = [x.replying for x in replying]
         request = self.context['request']
+        replying = tweet_paginator(replying_list, 10, request)
         replying_tweets = TweetSerializer(replying, context={'request': request}, many=True)
         return replying_tweets.data
 
@@ -254,7 +264,8 @@ class HomeSerializer(serializers.Serializer):
         q |= (Q(author=me) & ~Q(tweet_type='RETWEET'))                                      # tweets written(or replied, quoted) by me
         q |= (Q(retweeting_user=me.user_id) & Q(tweet_type='RETWEET'))                      # tweets retweeted by me
 
-        tweets = Tweet.objects.filter(q).order_by('-created_at')
+        tweet_list = Tweet.objects.filter(q).order_by('-created_at')
         request = self.context['request']
+        tweets = tweet_paginator(tweet_list, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
         return serializer.data
