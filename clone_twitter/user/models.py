@@ -9,20 +9,20 @@ class CustomUserManager(BaseUserManager):
 
     use_in_migrations = True
     # TODO change to create user with only email / phone-number
-    def _create_user(self, email, password, **extra_fields):
+    def _create_user(self, user_id, password, **extra_fields):
         # if not email:
         #    raise ValueError('이메일을 설정해주세요.')
-        if email:  # changed
-            email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+        # if email:  # changed
+        #    email = self.normalize_email(email)
+        user = self.model(user_id=user_id, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, user_id, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
-        return self._create_user(email, password, **extra_fields)
+        return self._create_user(user_id, password, **extra_fields)
 
 
     def create_superuser(self, password, **extra_fields):
@@ -37,7 +37,7 @@ class CustomUserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
 
-    # EMAIL_FIELD = 'email'
+    EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'user_id'
 
     user_id = models.CharField(max_length=15, unique=True, db_index=True)  # ex) @waffle -> user_id = waffle (up to length 15)

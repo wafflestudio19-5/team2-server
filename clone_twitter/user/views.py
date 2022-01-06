@@ -1,4 +1,7 @@
 import json
+
+import rest_framework.pagination
+
 from user.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
@@ -125,12 +128,19 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserFollowSerializer
     # TODO: 1. common serializer based on user model & manually make user list OR 2. separate 2serializers based on follow
     permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = rest_framework.pagination.PageNumberPagination  # TODO default setting?
 
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
     def follower(self, request, pk=None):
         user = get_object_or_404(User, user_id=pk)
         followers = Follow.objects.filter(following=user) # TODO: order?
+
+        page = self.paginate_queryset(followers)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(followers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -141,6 +151,10 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         user = get_object_or_404(User, user_id=pk)
         followings = Follow.objects.filter(follower=user)  # TODO: order?
         me = request.user.pk
+        page = self.paginate_queryset(followings)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'me': me})
+            return self.get_paginated_response(serializer.data)
         serializer = UserFollowingSerializer(followings, many=True, context={'me': me})
         return Response(serializer.data, status=status.HTTP_200_OK)
 

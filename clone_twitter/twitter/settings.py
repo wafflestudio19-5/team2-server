@@ -19,16 +19,16 @@ import twitter.storages
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECRET_KEY = 'django-insecure-8dt0^bcmgvwq@l6m4=6h9pksy4^f0!fwgcf&7r%w0inrt4kvjd' NOT VALID (changed)
 
-secret_file = os.path.join(BASE_DIR, 'secrets.json') 
+secret_file = os.path.join(BASE_DIR, 'secrets.json')
 with open(secret_file) as f:
     secrets = json.loads(f.read())
+
 
 def get_secret(setting, secrets=secrets):
     try:
@@ -36,6 +36,7 @@ def get_secret(setting, secrets=secrets):
     except KeyError:
         error_msg = "Set the {} environment variable".format(setting)
         raise ImproperlyConfigured(error_msg)
+
 
 SECRET_KEY = get_secret("SECRET_KEY")
 FRONT_URL = get_secret("FRONT_URL")
@@ -45,7 +46,6 @@ DEBUG = True
 DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
 ALLOWED_HOSTS = ['127.0.0.1', '15.165.77.144', 'localhost']
-
 
 # Application definition
 
@@ -106,7 +106,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'twitter.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
@@ -118,7 +117,7 @@ DATABASES = {
         'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
         # 'HOST': 'localhost',
         'PORT': 3306,
-        'NAME': 'twitter_backend',  
+        'NAME': 'twitter_backend',
         'USER': 'twitter-backend',
         'PASSWORD': DB_PASSWORD,
         'TEST': {
@@ -126,7 +125,6 @@ DATABASES = {
         }
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
@@ -146,7 +144,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
@@ -159,7 +156,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
@@ -192,7 +188,7 @@ MEDIA_URL = '/media/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
-   
+
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
@@ -205,8 +201,10 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
     ),
-}
 
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
 
 JWT_AUTH = {
     'JWT_SECRET_KEY': SECRET_KEY,
@@ -220,7 +218,7 @@ AUTH_USER_MODEL = 'user.User'
 
 SITE_ID = 1
 
-#CUSTOM LOGGING
+# CUSTOM LOGGING
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
