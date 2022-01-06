@@ -300,7 +300,18 @@ class KakaoCallbackView(APIView):
             return response
             # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
-class KakaoDeactivateView(APIView): # deactivate
+UNLINK_REDIRECT_URI = get_secret("UNLINK")
+
+class KaKaoUnlinkView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        kakao_auth_url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
+        response = redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={UNLINK_REDIRECT_URI}')
+        return response
+
+
+class KakaoUnlinkCallbackView(APIView): # deactivate
     permission_classes = (permissions.AllowAny, )
 
     def get(self, request):
@@ -308,13 +319,15 @@ class KakaoDeactivateView(APIView): # deactivate
         if not hasattr(me, 'social_account'):  # TODO add account type checking after google social login
             return Response({'message': "normal user cannot deactivate account via this api"}, status=status.HTTP_400_BAD_REQUEST)
 
+        kakao_auth_url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
+        redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={UNLINK_REDIRECT_URI}')
         # 1. get access token TODO: Q. our service does not save kakao access token..right?
         code = request.GET.get("code")
         kakao_token_url = "https://kauth.kakao.com/oauth/token"
         data = {
             'grant_type': 'authorization_code',
             'client_id': KAKAO_KEY,
-            'redirect_uri': REDIRECT_URI,
+            'redirect_uri': UNLINK_REDIRECT_URI,
             'code': code,
             # 'client_secret': '', # Not required but.. for security
         }
@@ -344,8 +357,9 @@ class KakaoDeactivateView(APIView): # deactivate
             retweet.retweeting.delete()
 
         kakao_account.delete()
-        # url = FRONT_URL + "oauth/callback/kakao/?code=" + "" + "&user_id=" + user.user_id  #TODO ask Front
-        # response = redirect(url)
+        url = FRONT_URL + "oauth/callback/kakao/?code=" + "" + "&user_id=" + user.user_id  #TODO ask Front
+        response = redirect(url)
+        return response
         return Response({'success':True}, status=status.HTTP_200_OK)
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
