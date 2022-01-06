@@ -251,3 +251,38 @@ class UserInfoSerializer(serializers.ModelSerializer):
         instance.user_id = validated_data.get('user_id', instance.user_id)
         return instance
 
+class UserSearchInfoSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(max_length=50)
+    user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
+    # TODO add image field after setting image server
+    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    bio = serializers.CharField(allow_blank=True)
+    tweets_num = serializers.SerializerMethodField()
+    following = serializers.SerializerMethodField()
+    follower = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'user_id',
+            # 'profile_img',
+            'bio',
+            'tweets_num',
+            'following',
+            'follower'
+        )
+
+    def get_tweets(self, obj):
+        tweets = obj.tweets.all()
+        serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
+        return serialized_tweets.data
+
+    def get_tweets_num(self, obj):
+        return obj.tweets.all().count()
+
+    def get_following(self, obj):
+        return obj.following.all().count()
+
+    def get_follower(self, obj):
+        return obj.follower.all().count()

@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
-from user.views import PingPongView, EmailSignUpView, UserInfoViewSet, UserLoginView, \
+from user.views import PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, \
     UserFollowView, UserUnfollowView, FollowListViewSet, KakaoCallbackView, KaKaoSignInView, \
     UserRecommendView, FollowRecommendView
 
@@ -17,5 +17,6 @@ urlpatterns = [
     path('recommend/', UserRecommendView.as_view(), name='recommend'),  # /api/v1/recommend/
     path('follow/<int:pk>/recommend/', FollowRecommendView.as_view(), name='follow-recommend'), #tmp
     path('kakao/signup/', KaKaoSignInView.as_view(), name='kakao-signup'),
+    path('search/people/', SearchPeopleView.as_view(), name='search-people'), # /api/v1/search/people/
     path('', include(router.urls))
 ]

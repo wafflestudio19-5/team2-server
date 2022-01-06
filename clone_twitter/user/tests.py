@@ -1,4 +1,5 @@
 import datetime
+from django.db.models import query
 from django.test import TestCase
 
 from factory.django import DjangoModelFactory
@@ -804,3 +805,45 @@ class PatchUserIDTestCase(TestCase):
         self.assertEqual(data['tweets_num'], self.static_response_patch2['tweets_num'])
         self.assertEqual(data['following'], self.static_response_patch2['following'])
         self.assertEqual(data['follower'], self.static_response_patch2['follower'])
+
+class GetSearchPeopleTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+
+        user_id_list = ['test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8ee', 'test9']
+        username_list = ['f', 'f', 'f', 'aa', 'aabb', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc']
+        bio_list = ['', 'aa', 'aabbcc', 'mol', '?', 'ru', '', 'aaccdd', 'aa', 'aabbccddee']
+        follow_relation = [(0,8), (1,8), (0,6)]
+        
+        cls.users = [
+            UserFactory(
+                email='email%d@email.com' % i,
+                user_id=user_id_list[i],
+                username=username_list[i],
+                password='password',
+                phone_number='010-0000-%04d' % i,
+                bio=bio_list[i],
+                birth_date=None
+            ) for i in range(len(user_id_list))]
+
+        cls.tokens = ['JWT ' + jwt_token_of(User.objects.get(email='email%d@email.com' % i))
+            for i in range(len(user_id_list))]
+
+        for init, term in follow_relation:
+            Follow.objects.create(follower=cls.users[init], following=cls.users[term])
+
+    # Several Keywords without @ sign
+    def test_get_search_people_without_atsign(self):
+        response = self.client.get(                            
+            '/api/v1/search/people/',
+            {'query': 'bb cc  aa dd ee'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.tokens[0])
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # for k in response.json():
+        #    print(k)
+        # print(list(map(lambda x:x['user_id'], response.json())))
+        self.assertEqual(list(map(lambda x:x['user_id'], response.json())),
+        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'test1'])

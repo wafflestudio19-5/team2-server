@@ -1,4 +1,7 @@
 import json
+from django.db.models.expressions import Case, When
+
+from rest_framework import parsers
 from user.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
@@ -7,9 +10,9 @@ from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, jwt_token_of, UserRecommendSerializer
+from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Q, Count
 from user.models import Follow, User, SocialAccount
 import requests
 from twitter.settings import get_secret, FRONT_URL
@@ -299,4 +302,24 @@ class FollowRecommendView(APIView):  # recommend random ? users who I don't foll
             return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
 
         serializer = UserRecommendSerializer(recommending_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class SearchPeopleView(APIView):
+    queryset = User.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+    
+    # GET /api/v1/search/people/
+    # include 
+    def get(self, request):
+        if not request.query_params:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
+        search_keywords = request.query_params['query'].split()
+
+        sorted_queryset = \
+            User.objects.all() \
+            .annotate(num_keywords_included=sum([Case(When(Q(username__icontains=keyword) | Q(user_id__icontains=keyword) | Q(bio__icontains=keyword), then=1), default=0) for keyword in search_keywords]), num_keywords_in_username=sum([Case(When(Q(username__icontains=keyword), then=1), default=0) for keyword in search_keywords]), num_followers=Count('following')) \
+            .filter(num_keywords_included__gte=1) \
+            .order_by('-num_keywords_in_username', '-num_keywords_included', '-num_followers')
+
+        serializer = UserSearchInfoSerializer(sorted_queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
