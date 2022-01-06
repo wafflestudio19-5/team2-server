@@ -1,7 +1,9 @@
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia
+
 
 User = get_user_model()
 
@@ -13,6 +15,26 @@ class UserSerializer(serializers.ModelSerializer):
             'user_id',
             'profile_img',
         ]
+
+
+def tweet_paginator(tweet_list, n, request):
+    paginator = Paginator(tweet_list, n)
+    page = request.GET.get('page')
+    try:
+        tweets = paginator.get_page(page)
+    except PageNotAnInteger:
+        tweets = paginator.get_page(1)
+    except EmptyPage:
+        tweets = paginator.get_page(paginator.num_pages)
+
+    index = tweets.number
+    max_index = len(paginator.page_range)
+
+    previous_page = None if index <= 1 else index-1
+    next_page = None if index >= max_index else index+1
+
+    return paginator.get_page(page), previous_page, next_page
+
 
 class TweetWriteSerializer(serializers.Serializer):
     content = serializers.CharField(required=False, max_length=500)
@@ -149,10 +171,18 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         replying = tweet.replied_by.select_related('replying').all()
         if not replying:
             return []
-        replying = [x.replying for x in replying]
+        replying_list = [x.replying for x in replying]
         request = self.context['request']
-        replying_tweets = TweetSerializer(replying, context={'request': request}, many=True)
-        return replying_tweets.data
+        replying, previous_page, next_page = tweet_paginator(replying_list, 10, request)
+        serializer = TweetSerializer(replying, context={'request': request}, many=True)
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return data
 
 
 class ReplySerializer(serializers.Serializer):
@@ -254,7 +284,15 @@ class HomeSerializer(serializers.Serializer):
         q |= (Q(author=me) & ~Q(tweet_type='RETWEET'))                                      # tweets written(or replied, quoted) by me
         q |= (Q(retweeting_user=me.user_id) & Q(tweet_type='RETWEET'))                      # tweets retweeted by me
 
-        tweets = Tweet.objects.filter(q).order_by('-created_at')
+        tweet_list = Tweet.objects.filter(q).order_by('-created_at')
         request = self.context['request']
+        tweets, previous_page, next_page = tweet_paginator(tweet_list, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
-        return serializer.data
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return data

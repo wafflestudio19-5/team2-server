@@ -509,7 +509,7 @@ class TweetDetailTestCase(TestCase):
 
         replying_tweets = data['replying_tweets']
         self.assertIsNotNone(replying_tweets)
-        self.assertEqual(len(replying_tweets), 2)
+        self.assertEqual(len(replying_tweets)-1, 2)
         replying_tweet = replying_tweets[0]
 
         self.assertIn('id', replying_tweet)
@@ -736,7 +736,7 @@ class HomeTestCase(TestCase):
 
         tweets = data['tweets']
         self.assertIsNotNone(tweets)
-        self.assertEqual(tweets, [])
+        self.assertEqual(tweets, [{'previous': None, 'next': None}])
 
         # No following
         response = self.client.get('/api/v1/home/', HTTP_AUTHORIZATION=self.user1_token)
