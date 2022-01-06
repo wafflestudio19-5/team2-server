@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
+from twitter.settings import AWS_S3_CUSTOM_DOMAIN
 # Create your models here.
 
 class CustomUserManager(BaseUserManager):
@@ -46,8 +47,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)  #TODO null=True
 
     # profile related fields
-    profile_img = models.ImageField(null=True, blank=True)  # TODO connect to S3. (we store only urls/key in DB)
-    header_img = models.ImageField(null=True, blank=True)
+    profile_img = models.ImageField(null=True, blank=True, upload_to='profile/', default='default_user_profile.jpeg')
+    header_img = models.ImageField(null=True, blank=True, upload_to='header/')
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
