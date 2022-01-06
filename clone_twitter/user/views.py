@@ -26,7 +26,8 @@ class PingPongView(APIView):
     ))
 
     def get(self, request):
-        response = redirect(FRONT_URL)
+        url = FRONT_URL + "?code=null" + "&message=failed to get kakao_id"
+        response = redirect(url)
         response['Authorization'] = "JWT " + "hah"
         return response
         return Response(data={'ping': 'pong'}, status=status.HTTP_200_OK)
@@ -179,14 +180,20 @@ class KakaoCallbackView(APIView):
         response = requests.post(kakao_token_url, data=data).json()
         access_token = response.get("access_token")
         if not access_token:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get access_token'})
+            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get access_token"
+            response = redirect(url)
+            return response
+            #return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get access_token'})
 
         # 2. get user information
         user_info_url = "https://kapi.kakao.com/v2/user/me"
         user_info_response = requests.get(user_info_url, headers={"Authorization": f"Bearer ${access_token}"},).json()
         kakao_id = user_info_response.get("id")
         if not kakao_id:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
+            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get kakao_id"
+            response = redirect(url)
+            return response
+            # return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
 
 
         # 3. connect kakao account - user
@@ -196,7 +203,7 @@ class KakaoCallbackView(APIView):
         if kakao_account:
             user = kakao_account.first().user
             token = jwt_token_of(user)
-            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "?user_id=" + user.user_id
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
             return response
             # return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
@@ -210,7 +217,7 @@ class KakaoCallbackView(APIView):
             user.save()
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
-            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "?user_id=" + user.user_id
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
             # response['Authorization'] = "JWT " + token
             return response
