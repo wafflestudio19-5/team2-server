@@ -2,7 +2,7 @@ import json
 import rest_framework.pagination
 import user.paginations
 from django.db.models.expressions import Case, When
-from rest_framework import parsers
+from django.contrib.auth import authenticate
 from user.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
@@ -84,16 +84,22 @@ class UserLoginView(APIView): #login with user_id
 class UserDeactivateView(APIView): # deactivate
     permission_classes = (permissions.IsAuthenticated, )
 
-    def delete(self, request):
-        # related retweet
+    def post(self, request):
         me = request.user
+        password = request.data.get('password', None)
         if hasattr(me, 'social_account'):
             return Response({'message': "social login user cannot deactivate account via this api"}, status=status.HTTP_400_BAD_REQUEST)
-        retweets = me.retweets.select_related('retweeting').all()
+
+        user = authenticate(user_id=me.user_id, password=password)
+
+        if user is None:
+            return Response({'message': "password is wrong"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        retweets = user.retweets.select_related('retweeting').all()
         for retweet in retweets:
             retweet.retweeting.delete()
 
-        me.delete()
+        user.delete()
         return Response({'success': True}, status=status.HTTP_200_OK)
 
 class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
@@ -293,6 +299,24 @@ class KakaoCallbackView(APIView):
             # response['Authorization'] = "JWT " + token
             return response
             # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
+
+class KakaoDeactivateView(APIView): # deactivate
+    permission_classes = (permissions.IsAuthenticated, )
+
+    def delete(self, request):
+        # related retweet
+        me = request.user
+        if not hasattr(me, 'social_account'):  #TODO add account type checking after google social login
+            return Response({'message': "normal user cannot deactivate account via this api"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # delete related retweets
+        retweets = me.retweets.select_related('retweeting').all()
+        for retweet in retweets:
+            retweet.retweeting.delete()
+
+        #
+        me.delete()
+        return Response({'success': True}, status=status.HTTP_200_OK)
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
     queryset = User.objects.all().reverse()
