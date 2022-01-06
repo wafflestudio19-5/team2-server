@@ -9,19 +9,20 @@ class CustomUserManager(BaseUserManager):
 
     use_in_migrations = True
     # TODO change to create user with only email / phone-number
-    def _create_user(self, email, password, **extra_fields):
-        if not email:
-            raise ValueError('이메일을 설정해주세요.')
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+    def _create_user(self, user_id, password, **extra_fields):
+        # if not email:
+        #    raise ValueError('이메일을 설정해주세요.')
+        # if email:  # changed
+        #    email = self.normalize_email(email)
+        user = self.model(user_id=user_id, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, user_id, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
-        return self._create_user(email, password, **extra_fields)
+        return self._create_user(user_id, password, **extra_fields)
 
 
     def create_superuser(self, password, **extra_fields):
@@ -37,14 +38,14 @@ class CustomUserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
 
     EMAIL_FIELD = 'email'
-    USERNAME_FIELD = 'user_id'  #TODO
+    USERNAME_FIELD = 'user_id'
 
     user_id = models.CharField(max_length=15, unique=True, db_index=True)  # ex) @waffle -> user_id = waffle (up to length 15)
     username = models.CharField(max_length=50)  # nickname ex) Waffle @1234 -> Waffle (up to length 50)
-    email = models.EmailField(max_length=100, unique=True)
+    email = models.EmailField(max_length=100, unique=True, null=True)
 
     phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{4}-[\d]{4}")  # another option: 1)validation with drf 2)external library
-    phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)  #TODO null=True
+    phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)
 
     # profile related fields
     profile_img = models.ImageField(null=True, blank=True, upload_to='profile/', default='default_user_profile.jpeg')
@@ -63,6 +64,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Follow(models.Model):
     follower = models.ForeignKey(get_user_model(), related_name='follower', on_delete=models.CASCADE)
     following = models.ForeignKey(get_user_model(), related_name='following', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         # no duplicated follow relation

@@ -1,6 +1,7 @@
 import json
+import rest_framework.pagination
+import user.paginations
 from django.db.models.expressions import Case, When
-
 from rest_framework import parsers
 from user.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
@@ -128,12 +129,18 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserFollowSerializer
     # TODO: 1. common serializer based on user model & manually make user list OR 2. separate 2serializers based on follow
     permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = user.paginations.FollowListPagination
 
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
     def follower(self, request, pk=None):
         user = get_object_or_404(User, user_id=pk)
-        followers = Follow.objects.filter(following=user) # TODO: order?
+        followers = Follow.objects.filter(following=user).order_by('-created_at')
+        page = self.paginate_queryset(followers)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(followers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -142,8 +149,14 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['GET'])
     def following(self, request, pk=None):
         user = get_object_or_404(User, user_id=pk)
-        followings = Follow.objects.filter(follower=user)  # TODO: order?
+        followings = Follow.objects.filter(follower=user).order_by('-created_at')
         me = request.user.pk
+        page = self.paginate_queryset(followings)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'me': me})
+            return self.get_paginated_response(serializer.data)
+
         serializer = UserFollowingSerializer(followings, many=True, context={'me': me})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
