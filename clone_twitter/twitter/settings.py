@@ -15,6 +15,8 @@ import os, json, datetime
 from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+import twitter.storages
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -62,6 +64,7 @@ INSTALLED_APPS = [
     'tweet',
     'drf_yasg',
     'corsheaders',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -162,8 +165,27 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_DIR = os.path.join(BASE_DIR, 'static')
-STATIC_ROOT = STATIC_DIR
+# STATIC_DIR = os.path.join(BASE_DIR, 'static')
+# STATIC_ROOT = STATIC_DIR
+
+# s3
+AWS_ACCESS_KEY_ID = get_secret("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = get_secret("AWS_SECRET_ACCESS_KEY")
+
+AWS_REGION = "ap-northeast-2"
+AWS_STORAGE_BUCKET_NAME = "team2-django-media"
+AWS_S3_CUSTOM_DOMAIN = "%s.s3.%s.amazonaws.com" % (AWS_STORAGE_BUCKET_NAME, AWS_REGION)
+AWS_S3_OBJECT_PARAMETERS = {
+    "CacheControl": "max-age=86400",
+}
+AWS_S3_HOST = "s3.ap-northeast-2.amazonaws.com"
+AWS_QUERYSTRING_AUTH = False
+
+DEFAULT_FILE_STORAGE = 'twitter.storages.S3MediaStorage'
+STATICFILES_STORAGE = 'twitter.storages.S3StaticStorage'
+
+
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field

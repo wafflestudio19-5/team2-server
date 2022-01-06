@@ -10,5 +10,6 @@ django-rest-authtoken
 drf-yasg # swagger
 django-cors-headers
 boto3 # access to aws
+django-storages
 Pillow
 factory-boy
