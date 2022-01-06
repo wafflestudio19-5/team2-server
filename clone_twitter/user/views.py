@@ -1,5 +1,5 @@
 import json
-from user.utils import unique_random_id_generator
+from user.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
@@ -7,11 +7,12 @@ from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from user.serializers import UserCreateSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, jwt_token_of
+from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError
+from django.db.models import Q
 from user.models import Follow, User, SocialAccount
 import requests
-from twitter.settings import get_secret
+from twitter.settings import get_secret, FRONT_URL
 # Create your views here.
 
 class PingPongView(APIView):
@@ -25,6 +26,10 @@ class PingPongView(APIView):
     ))
 
     def get(self, request):
+        url = FRONT_URL + "?code=null" + "&message=failed to get kakao_id"
+        response = redirect(url)
+        response['Authorization'] = "JWT " + "hah"
+        return response
         return Response(data={'ping': 'pong'}, status=status.HTTP_200_OK)
 
 class EmailSignUpView(APIView):   #signup with email
@@ -128,7 +133,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
     def follower(self, request, pk=None):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, user_id=pk)
         followers = Follow.objects.filter(following=user) # TODO: order?
 
         serializer = self.get_serializer(followers, many=True)
@@ -137,20 +142,64 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     # GET /api/v1/follow_list/{lookup}/following/
     @action(detail=True, methods=['GET'])
     def following(self, request, pk=None):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, user_id=pk)
         followings = Follow.objects.filter(follower=user)  # TODO: order?
 
         serializer = UserFollowingSerializer(followings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class UserInfoViewSet(viewsets.GenericViewSet):
+    serializer_class = UserInfoSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    # GET /user/{user_user_id}/
+    def retrieve(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PATCH /user/id/
+    @action(detail=False, methods=['patch'], name='Id')
+    def id(self, request):
+        user = request.user
+
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # GET /user/{user_id}/profile/
+    @action(detail=True, methods=['get'], url_path='profile', url_name='profile')
+    def profile(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        serializer = UserProfileSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PATCH /user/profile/
+    @action(detail=False, methods=['patch'], url_path='profile', url_name='profile')
+    def patch_profile(self, request):
+        user = request.user
+
+        serializer = UserProfileSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 # Social Login : Kakao
-# According to notion docs, front will get authorization code from kakao auth server
-# so backend has to get token from kakao api server
+
 KAKAO_KEY = get_secret("CLIENT_ID")
 REDIRECT_URI = get_secret("REDIRECT_URI")
 
-
-class KaKaoSignInView(APIView):  # front's job but for test..
+# get authorization code from kakao auth server
+class KaKaoSignInView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request):
@@ -158,13 +207,13 @@ class KaKaoSignInView(APIView):  # front's job but for test..
         response = redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={REDIRECT_URI}')
         return response
 
-
+# get access token from kakao api server
 class KakaoCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request):
         # 1. get token
-        code = request.GET.get("code")   # TODO tell front (request / query param)
+        code = request.GET.get("code") # TODO tell front (request / query param)
         kakao_token_url = "https://kauth.kakao.com/oauth/token"
         data = {
             'grant_type': 'authorization_code',
@@ -175,12 +224,22 @@ class KakaoCallbackView(APIView):
         }
         response = requests.post(kakao_token_url, data=data).json()
         access_token = response.get("access_token")
+        if not access_token:
+            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get access_token"
+            response = redirect(url)
+            return response
+            #return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get access_token'})
 
         # 2. get user information
         user_info_url = "https://kapi.kakao.com/v2/user/me"
         user_info_response = requests.get(user_info_url, headers={"Authorization": f"Bearer ${access_token}"},).json()
         kakao_id = user_info_response.get("id")
-        # TODO: are you going to get user profile, too???
+        if not kakao_id:
+            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get kakao_id"
+            response = redirect(url)
+            return response
+            # return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
+
 
         # 3. connect kakao account - user
         # user signed up with kakao -> enable kakao login (Q. base login?)
@@ -189,14 +248,58 @@ class KakaoCallbackView(APIView):
         if kakao_account:
             user = kakao_account.first().user
             token = jwt_token_of(user)
-            return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
+            response = redirect(url)
+            return response
+            # return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
 
         # case 2. new user signup with kakao (might use profile info)
         else:
             random_id = unique_random_id_generator()
-            user = User(user_id=random_id)  # (tmp) user_id
+            fake_email = unique_random_email_generator()
+            user = User(user_id=random_id, email=fake_email)  # (tmp) user_id, fake email
             user.set_unusable_password()  # user signed up with kakao can only login via kakao login
             user.save()
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
-            return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
+            response = redirect(url)
+            # response['Authorization'] = "JWT " + token
+            return response
+            # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
+
+class UserRecommendView(APIView):  # recommend random ? users who I don't follow
+    queryset = User.objects.all().reverse()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/recommend/  TODO: Q. request.user? or specify..?
+    def get(self, request):
+        me = request.user
+        unfollowing_users = self.queryset.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
+
+        if unfollowing_users.count() < 3:
+            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+
+        serializer = UserRecommendSerializer(unfollowing_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class FollowRecommendView(APIView):  # recommend random ? users who I don't follow
+    queryset = User.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/follow/{pk}/recommend/  tmp
+    def get(self, request, pk=None):
+        me = request.user
+        try:
+            new_following = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such user exists'})
+
+        followings = User.objects.filter(following__follower=new_following)
+        recommending_users = followings.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
+
+        if recommending_users.count() < 3:
+            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+
+        serializer = UserRecommendSerializer(recommending_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
