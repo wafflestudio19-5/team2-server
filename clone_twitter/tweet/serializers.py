@@ -216,10 +216,10 @@ class HomeSerializer(serializers.Serializer):
 
         q = Q()
         for follow in follows:
-            q |= (Q(author=follow.following) & ~Q(tweet_type='RETWEET'))
-            q |= (Q(retweeting_user=follow.following.user_id) & Q(tweet_type='RETWEET'))
-        q |= (Q(author=me) & ~Q(tweet_type='RETWEET'))
-        q |= (Q(retweeting_user=me.user_id) & Q(tweet_type='RETWEET'))
+            q |= (Q(author=follow.following) & ~Q(tweet_type='RETWEET'))                    # tweets written(or replied, quoted) by my following user
+            q |= (Q(retweeting_user=follow.following.user_id) & Q(tweet_type='RETWEET'))    # tweets retweeted by my following user
+        q |= (Q(author=me) & ~Q(tweet_type='RETWEET'))                                      # tweets written(or replied, quoted) by me
+        q |= (Q(retweeting_user=me.user_id) & Q(tweet_type='RETWEET'))                      # tweets retweeted by me
 
         tweets = Tweet.objects.filter(q).order_by('-created_at')
         request = self.context['request']
