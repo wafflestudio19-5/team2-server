@@ -23,9 +23,9 @@ def jwt_token_of(user):
 class UserCreateSerializer(serializers.Serializer):
     user_id = serializers.CharField(required=True)  # ex) @waffle -> user_id = waffle
     username = serializers.CharField(required=True) # nickname ex) Waffle @1234 -> Waffle
-    email = serializers.EmailField(required=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
     password = serializers.CharField(required=True)
-    phone_number = serializers.CharField(required=False)
+    phone_number = serializers.CharField(required=False, allow_blank=True)
     profile_img = serializers.ImageField(required=False)  #TODO set to default image
     header_img = serializers.ImageField(required=False)
     bio = serializers.CharField(required=False)
@@ -35,19 +35,26 @@ class UserCreateSerializer(serializers.Serializer):
 
     def validate(self, data):
         user_id = data.get('user_id')
-        email = data.get('email')
+        email = data.get('email', '')
         phone_number = data.get('phone_number', '')
 
         if User.objects.filter(user_id=user_id).exists():
             raise serializers.ValidationError("same user_id exists already")
-        if email and User.objects.filter(email=email).exists():
-            raise serializers.ValidationError("same email exists already")
+
         if phone_number == '':  # since '' regarded as duplicate entry in db
             data.update({'phone_number': None})
-        if phone_number and User.objects.filter(phone_number=phone_number).exists():
-            raise serializers.ValidationError("same phonenumber exsits already")
-        if phone_number and not self.is_valid_phone_num(phone_number):
-            raise serializers.ValidationError("invalid phone number pattern")
+        if email == '':  # since '' regarded as duplicate entry in db
+            data.update({'email': None})
+
+        if not email and not phone_number:
+            raise serializers.ValidationError("at least email or phone_number is required")
+        if email and User.objects.filter(email=email).exists():
+            raise serializers.ValidationError("same email exists already")
+        if phone_number:
+            if User.objects.filter(phone_number=phone_number).exists():
+                raise serializers.ValidationError("same phonenumber exsits already")
+            if not self.is_valid_phone_num(phone_number):
+                raise serializers.ValidationError("invalid phone number pattern")
         return data
 
     def is_valid_phone_num(self, phone_number):
@@ -60,7 +67,7 @@ class UserCreateSerializer(serializers.Serializer):
         email = validated_data.get('email')
         password = validated_data.get('password')
         user_id = validated_data.get('user_id')
-        phone_number = validated_data.pop('phone_number', '')
+        phone_number = validated_data.pop('phone_number', None)
         profile_img = validated_data.get('profile_img')
         header_img = validated_data.get('header_img')
         bio = validated_data.pop('bio', '')
