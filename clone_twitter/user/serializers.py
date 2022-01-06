@@ -149,17 +149,7 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
             'bio',
              #'follows_me'
              #'profile_img'
-        )
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = [
-            'username',
-            'user_id',
-            'profile_img',
-        ]
+          
 
 class UserRecommendSerializer(serializers.ModelSerializer):
     class Meta:
@@ -171,6 +161,8 @@ class UserRecommendSerializer(serializers.ModelSerializer):
             'bio',
             # Q. id ?
         ]
+          
+          
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField()
     # TODO add image field after setting image server
@@ -250,4 +242,3 @@ class UserInfoSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.user_id = validated_data.get('user_id', instance.user_id)
         return instance
-

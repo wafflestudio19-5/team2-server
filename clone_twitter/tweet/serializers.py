@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from tweet.models import Tweet, Reply, Retweet, UserLike
@@ -51,7 +52,7 @@ class TweetSerializer(serializers.ModelSerializer):
         return tweet.replied_by.all().count()
 
     def get_retweets(self, tweet):
-        return tweet.retweeted_by.all().count()
+        return tweet.retweeted_by.all().count() + tweet.quoted_by.all().count()
 
     def get_user_retweet(self, tweet):
         me = self.context['request'].user
@@ -199,3 +200,27 @@ class LikeSerializer(serializers.Serializer):
         user_like = UserLike.objects.create(user=me, liked=liked)
 
         return True
+
+
+class HomeSerializer(serializers.Serializer):
+    user = serializers.SerializerMethodField()
+    tweets = serializers.SerializerMethodField()
+
+    def get_user(self, me):
+        serializer = UserSerializer(me)
+        return serializer.data
+
+    def get_tweets(self, me):
+        follows = me.follower.select_related('following').all()
+
+        q = Q()
+        for follow in follows:
+            q |= (Q(author=follow.following) & ~Q(tweet_type='RETWEET'))                    # tweets written(or replied, quoted) by my following user
+            q |= (Q(retweeting_user=follow.following.user_id) & Q(tweet_type='RETWEET'))    # tweets retweeted by my following user
+        q |= (Q(author=me) & ~Q(tweet_type='RETWEET'))                                      # tweets written(or replied, quoted) by me
+        q |= (Q(retweeting_user=me.user_id) & Q(tweet_type='RETWEET'))                      # tweets retweeted by me
+
+        tweets = Tweet.objects.filter(q).order_by('-created_at')
+        request = self.context['request']
+        serializer = TweetSerializer(tweets, many=True, context={'request': request})
+        return serializer.data
