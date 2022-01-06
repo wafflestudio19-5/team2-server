@@ -2,7 +2,7 @@ from django.test import TestCase
 
 from factory.django import DjangoModelFactory
 
-from user.models import User
+from user.models import User, Follow
 from tweet.models import Tweet, Reply, Retweet, UserLike
 from django.test import TestCase
 from django.db import transaction
@@ -21,6 +21,17 @@ class UserFactory(DjangoModelFactory):
         user.set_password(kwargs.get('password', ''))
         user.save()
         return user
+
+
+class FollowFactory(DjangoModelFactory):
+    class Meta:
+        model = Follow
+
+    @classmethod
+    def create(cls, **kwargs):
+        follow = Follow.objects.create(**kwargs)
+        follow.save()
+        return follow
 
 
 class TweetFactory(DjangoModelFactory):
@@ -736,3 +747,166 @@ class LikeCancelTestCase(TestCase):
         self.assertEqual(tweet_count, 1)
         user_like_count = UserLike.objects.count()
         self.assertEqual(user_like_count, 0)
+
+
+class HomeTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username1',
+            password='password',
+            phone_number='010-1234-5678'
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.user2 = UserFactory(
+            email='test@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-1111-2222'
+        )
+        cls.user2_token = 'JWT ' + jwt_token_of(User.objects.get(email='test@email.com'))
+
+        cls.user3 = UserFactory(
+            email='test3@email.com',
+            user_id='user3_id',
+            username='username3',
+            password='password',
+            phone_number='010-1234-2222'
+        )
+        cls.user3_token = 'JWT ' + jwt_token_of(User.objects.get(email='test3@email.com'))
+
+        cls.follow = FollowFactory(
+            following = cls.user1,
+            follower = cls.user2
+        )
+
+        cls.tweet = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user1,
+            content = 'content'
+        )
+
+    def test_get_home(self):
+        # No following & No tweet
+        response = self.client.get('/api/v1/home/', HTTP_AUTHORIZATION=self.user3_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        user = data['user']
+        self.assertIsNotNone(user)
+        self.assertEqual(user['username'], 'username3')
+        self.assertEqual(user['user_id'], 'user3_id')
+        self.assertIsNone(user['profile_img'])
+
+        tweets = data['tweets']
+        self.assertIsNotNone(tweets)
+        self.assertEqual(tweets, [])
+
+        # No following
+        response = self.client.get('/api/v1/home/', HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        user = data['user']
+        self.assertIsNotNone(user)
+        self.assertEqual(user['username'], 'username1')
+        self.assertEqual(user['user_id'], 'user1_id')
+        self.assertIsNone(user['profile_img'])
+
+        tweets = data['tweets']
+        self.assertIsNotNone(tweets)
+        tweet = tweets[0]
+
+        self.assertIn('id', tweet)
+
+        author = tweet['author']
+        self.assertIsNotNone(author)
+        self.assertEqual(author['username'], 'username1')
+        self.assertEqual(author['user_id'], 'user1_id')
+        self.assertIsNone(author['profile_img'])
+
+        self.assertEqual(tweet['tweet_type'], 'GENERAL')
+        self.assertEqual(tweet['retweeting_user'], '')
+        self.assertEqual(tweet['reply_to'], '')
+        self.assertEqual(tweet['content'], 'content')
+        self.assertIsNone(tweet['media'])
+        self.assertIn('created_at', tweet)
+        self.assertEqual(tweet['replies'], 0)
+        self.assertEqual(tweet['retweets'], 0)
+        self.assertFalse(tweet['user_retweet'])
+        self.assertEqual(tweet['likes'], 0)
+        self.assertFalse(tweet['user_like'])
+
+        # Following O
+        data = {
+            'content': 'content22',
+            # 'media': 'media',
+        }
+        self.client.post('/api/v1/tweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user2_token)
+
+        tweets = Tweet.objects.all()
+        tweet = tweets[1]
+
+        data = {'id': tweet.id}
+        self.client.post('/api/v1/like/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user2_token)
+
+        response = self.client.get('/api/v1/home/', HTTP_AUTHORIZATION=self.user2_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        user = data['user']
+        self.assertIsNotNone(user)
+        self.assertEqual(user['username'], 'username2')
+        self.assertEqual(user['user_id'], 'user2_id')
+        self.assertIsNone(user['profile_img'])
+
+        tweets = data['tweets']
+        self.assertIsNotNone(tweets)
+        my_tweet = tweets[0]
+        following_tweet = tweets[1]
+
+        self.assertIn('id', my_tweet)
+
+        author = my_tweet['author']
+        self.assertIsNotNone(author)
+        self.assertEqual(author['username'], 'username2')
+        self.assertEqual(author['user_id'], 'user2_id')
+        self.assertIsNone(author['profile_img'])
+
+        self.assertEqual(my_tweet['tweet_type'], 'GENERAL')
+        self.assertEqual(my_tweet['retweeting_user'], '')
+        self.assertEqual(my_tweet['reply_to'], '')
+        self.assertEqual(my_tweet['content'], 'content22')
+        self.assertIsNone(my_tweet['media'])
+        self.assertIn('created_at', my_tweet)
+        self.assertEqual(my_tweet['replies'], 0)
+        self.assertEqual(my_tweet['retweets'], 0)
+        self.assertFalse(my_tweet['user_retweet'])
+        self.assertEqual(my_tweet['likes'], 1)
+        self.assertTrue(my_tweet['user_like'])
+
+        self.assertIn('id', following_tweet)
+
+        author = following_tweet['author']
+        self.assertIsNotNone(author)
+        self.assertEqual(author['username'], 'username1')
+        self.assertEqual(author['user_id'], 'user1_id')
+        self.assertIsNone(author['profile_img'])
+
+        self.assertEqual(following_tweet['tweet_type'], 'GENERAL')
+        self.assertEqual(following_tweet['retweeting_user'], '')
+        self.assertEqual(following_tweet['reply_to'], '')
+        self.assertEqual(following_tweet['content'], 'content')
+        self.assertIsNone(following_tweet['media'])
+        self.assertIn('created_at', following_tweet)
+        self.assertEqual(following_tweet['replies'], 0)
+        self.assertEqual(following_tweet['retweets'], 0)
+        self.assertFalse(following_tweet['user_retweet'])
+        self.assertEqual(following_tweet['likes'], 0)
+        self.assertFalse(following_tweet['user_like'])
