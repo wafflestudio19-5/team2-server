@@ -39,7 +39,7 @@ class TweetWriteSerializer(serializers.Serializer):
 class TweetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tweet
-        fields = '__all__'
+        exclude = ['created_at']
 
     author = UserSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
@@ -75,7 +75,7 @@ class TweetSerializer(serializers.ModelSerializer):
 class TweetDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tweet
-        fields = '__all__'
+        exclude = ['created_at']
 
     author = UserSerializer(read_only=True)
     retweets = serializers.SerializerMethodField()
@@ -175,10 +175,11 @@ class RetweetSerializer(serializers.Serializer):
         retweeting_user = me.user_id
         content = retweeted.content
         media = retweeted.media
+        written_at = retweeted.written_at
 
         exist = retweeted.retweeted_by.filter(user=me)
         if not exist:
-            retweeting = Tweet.objects.create(tweet_type=tweet_type, author=author, retweeting_user=retweeting_user, content=content, media=media)
+            retweeting = Tweet.objects.create(tweet_type=tweet_type, author=author, retweeting_user=retweeting_user, content=content, media=media, written_at=written_at)
             retweet = Retweet.objects.create(retweeted=retweeted, retweeting=retweeting, user=me)
         else:
             false = Retweet.objects.create(retweeted=retweeted, retweeting=retweeted, user=me)

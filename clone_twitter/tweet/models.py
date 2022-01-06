@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+
 from user.models import User
 
 
@@ -17,6 +19,7 @@ class Tweet(models.Model):
     # retweeting_user, reply_to : User.user_id
     content = models.CharField(max_length=500, blank=True)
     media = models.FileField()  # TODO connect to S3. (we store only urls/key in DB)
+    written_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Reply(models.Model):
