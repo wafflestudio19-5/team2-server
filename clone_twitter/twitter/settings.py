@@ -44,7 +44,7 @@ FRONT_URL = get_secret("FRONT_URL")
 DEBUG = True
 DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
-ALLOWED_HOSTS = ['127.0.0.1', '13.125.169.97', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', '15.165.77.144', 'localhost']
 
 
 # Application definition
@@ -184,8 +184,7 @@ AWS_QUERYSTRING_AUTH = False
 DEFAULT_FILE_STORAGE = 'twitter.storages.S3MediaStorage'
 STATICFILES_STORAGE = 'twitter.storages.S3StaticStorage'
 
-
-
+MEDIA_URL = '/media/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field

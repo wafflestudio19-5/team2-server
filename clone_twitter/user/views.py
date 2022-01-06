@@ -26,10 +26,6 @@ class PingPongView(APIView):
     ))
 
     def get(self, request):
-        url = FRONT_URL + "?code=null" + "&message=failed to get kakao_id"
-        response = redirect(url)
-        response['Authorization'] = "JWT " + "hah"
-        return response
         return Response(data={'ping': 'pong'}, status=status.HTTP_200_OK)
 
 class EmailSignUpView(APIView):   #signup with email
@@ -110,8 +106,8 @@ class UserUnfollowView(APIView):
         }
     ))
 
-    def delete(self, request):
-        target_id = request.data.get('user_id', None)
+    def delete(self, request, user_id=None):  # unfollow/{target_id}/
+        target_id = user_id
         if target_id is None:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message':'you have specify user you want to unfollow'})
         try:
@@ -128,7 +124,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Follow.objects.all()
     serializer_class = UserFollowSerializer
     # TODO: 1. common serializer based on user model & manually make user list OR 2. separate 2serializers based on follow
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
@@ -144,8 +140,8 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     def following(self, request, pk=None):
         user = get_object_or_404(User, user_id=pk)
         followings = Follow.objects.filter(follower=user)  # TODO: order?
-
-        serializer = UserFollowingSerializer(followings, many=True)
+        me = request.user.pk
+        serializer = UserFollowingSerializer(followings, many=True, context={'me': me})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class UserInfoViewSet(viewsets.GenericViewSet):
