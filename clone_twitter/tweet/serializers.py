@@ -52,7 +52,10 @@ class TweetWriteSerializer(serializers.Serializer):
 
         last_word = content.split(' ')[-1]
         if 'dyzs1883jjmms.cloudfront.net/status/' in last_word:
-            tweet_id =  int(last_word.split('/')[-1])
+            try:
+                tweet_id =  int(last_word.split('/')[-1])
+            except ValueError:
+                pass
             if len(Tweet.objects.filter(id=tweet_id)):
                 quoted = Tweet.objects.get(id=tweet_id)
             else:
@@ -222,7 +225,10 @@ class ReplySerializer(serializers.Serializer):
 
         last_word = content.split(' ')[-1]
         if 'dyzs1883jjmms.cloudfront.net/status/' in last_word:
-            tweet_id = int(last_word.split('/')[-1])
+            try:
+                tweet_id = int(last_word.split('/')[-1])
+            except ValueError:
+                pass
             if len(Tweet.objects.filter(id=tweet_id)):
                 quoted = Tweet.objects.get(id=tweet_id)
             else:

@@ -3,7 +3,7 @@ from django.test import TestCase
 from factory.django import DjangoModelFactory
 
 from user.models import User, Follow
-from tweet.models import Tweet, Reply, Retweet, UserLike
+from tweet.models import Tweet, Reply, Retweet, UserLike, Quote
 from django.test import TestCase
 from django.db import transaction
 from rest_framework import status
@@ -840,3 +840,108 @@ class HomeTestCase(TestCase):
         self.assertFalse(following_tweet['user_retweet'])
         self.assertEqual(following_tweet['likes'], 0)
         self.assertFalse(following_tweet['user_like'])
+
+
+class QuoteTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.user = UserFactory(
+            email='email@email.com',
+            user_id='user_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678'
+        )
+        cls.user_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.tweet = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user,
+            content = 'content'
+        )
+
+        tweets = Tweet.objects.all()
+        cls.tweet = tweets[0]
+
+        cls.post_data = {
+            'id': cls.tweet.id,
+            'content': 'content',
+            # 'media': 'media',
+        }
+
+    def test_quote_wrong_id(self):
+        data = self.post_data.copy()
+        data['id'] = -1
+        response = self.client.post('/api/v1/quote/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_quote_missing_required_field(self):
+        # No tweet_id
+        data = self.post_data.copy()
+        data.pop('id')
+        response = self.client.post('/api/v1/quote/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # No content nor media
+        data = self.post_data.copy()
+        data.pop('content')
+        # data.pop('media')
+        response = self.client.post('/api/v1/quote/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_quote_tweet_success(self):
+        # there are both content and media
+        data = self.post_data.copy()
+        response = self.client.post('/api/v1/quote/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        data = response.json()
+        self.assertEqual(data['message'], "successfully quote and retweet")
+
+        self.assertEqual(Tweet.objects.all()[1].content, 'content dyzs1883jjmms.cloudfront.net/status/' + str(self.tweet.id))
+
+        tweet_count = Tweet.objects.count()
+        self.assertEqual(tweet_count, 2)
+        quote_count = Quote.objects.count()
+        self.assertEqual(quote_count, 1)
+
+    def test_quote_delete(self):
+        # delete quoting tweet
+        data = self.post_data.copy()
+        self.client.post('/api/v1/quote/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+
+        response = self.client.delete('/api/v1/tweet/' + str(self.tweet.id + 1) + '/', HTTP_AUTHORIZATION=self.user_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        tweet_count = Tweet.objects.count()
+        self.assertEqual(tweet_count, 1)
+        quote_count = Quote.objects.count()
+        self.assertEqual(quote_count, 0)
+
+        # delete replied tweet
+        data = self.post_data.copy()
+        self.client.post('/api/v1/quote/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+
+        response = self.client.delete('/api/v1/tweet/' + str(self.tweet.id) + '/', HTTP_AUTHORIZATION=self.user_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        tweet_count = Tweet.objects.count()
+        self.assertEqual(tweet_count, 1)
+        quote_count = Quote.objects.count()
+        self.assertEqual(quote_count, 0)
+
+    def test_tweet_write_quote(self):
+        data = {'content': 'content 12 123 1234 dyzs1883jjmms.cloudfront.net/status/' + str(self.tweet.id)}
+        self.client.post('/api/v1/tweet/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+
+        quote_count = Quote.objects.count()
+        self.assertEqual(quote_count, 1)
+
+    def test_reply_quote(self):
+        data = {'content': 'content 12 123 1234 dyzs1883jjmms.cloudfront.net/status/' + str(self.tweet.id), 'id': self.tweet.id}
+        self.client.post('/api/v1/reply/', data=data, content_type='application/json', HTTP_AUTHORIZATION=self.user_token)
+
+        quote_count = Quote.objects.count()
+        self.assertEqual(quote_count, 1)
