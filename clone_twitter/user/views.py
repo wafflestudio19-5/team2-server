@@ -154,7 +154,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         page = self.paginate_queryset(followings)
 
         if page is not None:
-            serializer = self.get_serializer(page, many=True, context={'me': me})
+            serializer = UserFollowingSerializer(page, many=True, context={'me': me})
             return self.get_paginated_response(serializer.data)
 
         serializer = UserFollowingSerializer(followings, many=True, context={'me': me})
