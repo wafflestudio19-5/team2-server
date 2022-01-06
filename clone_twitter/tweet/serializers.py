@@ -1,9 +1,9 @@
 from django.db.models import Q
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
-
 from tweet.models import Tweet, Reply, Retweet, UserLike
-from user.models import User
 
+User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,7 +13,6 @@ class UserSerializer(serializers.ModelSerializer):
             'user_id',
             'profile_img',
         ]
-
 
 class TweetWriteSerializer(serializers.Serializer):
     content = serializers.CharField(required=False, max_length=500)
