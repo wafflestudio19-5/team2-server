@@ -1,7 +1,9 @@
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from tweet.models import Tweet, Reply, Retweet, UserLike
+from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia
+
 
 User = get_user_model()
 
@@ -14,13 +16,32 @@ class UserSerializer(serializers.ModelSerializer):
             'profile_img',
         ]
 
+
+def tweet_paginator(tweet_list, n, request):
+    paginator = Paginator(tweet_list, n)
+    page = request.GET.get('page')
+    try:
+        tweets = paginator.get_page(page)
+    except PageNotAnInteger:
+        tweets = paginator.get_page(1)
+    except EmptyPage:
+        tweets = paginator.get_page(paginator.num_pages)
+
+    index = tweets.number
+    max_index = len(paginator.page_range)
+
+    previous_page = None if index <= 1 else index-1
+    next_page = None if index >= max_index else index+1
+
+    return paginator.get_page(page), previous_page, next_page
+
+
 class TweetWriteSerializer(serializers.Serializer):
     content = serializers.CharField(required=False, max_length=500)
-    media = serializers.FileField(required=False)
 
     def validate(self, data):
         content = data.get('content', '')
-        media = data.get('media', None)
+        media = self.context['request'].FILES.getlist('media')
         if not content and not media:
             raise serializers.ValidationError("neither content nor media")
         return data
@@ -29,11 +50,22 @@ class TweetWriteSerializer(serializers.Serializer):
         tweet_type = 'GENERAL'
         author = self.context['request'].user
         content = validated_data.get('content', '')
-        media = validated_data.get('media', None)
+        media_list = self.context['request'].FILES.getlist('media')
 
-        tweet = Tweet.objects.create(tweet_type=tweet_type, author=author, content=content, media=media)
+        tweet = Tweet.objects.create(tweet_type=tweet_type, author=author, content=content)
+
+        for media in media_list:
+            tweet_media = TweetMedia.objects.create(media=media, tweet=tweet)
 
         return tweet
+
+
+class MediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TweetMedia
+        fields = [
+            'media'
+        ]
 
 
 class TweetSerializer(serializers.ModelSerializer):
@@ -42,11 +74,17 @@ class TweetSerializer(serializers.ModelSerializer):
         exclude = ['created_at']
 
     author = UserSerializer(read_only=True)
+    media = serializers.SerializerMethodField()
     replies = serializers.SerializerMethodField()
     retweets = serializers.SerializerMethodField()
     user_retweet = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
     user_like = serializers.SerializerMethodField()
+
+    def get_media(self, tweet):
+        media = tweet.media.all()
+        serializer = MediaSerializer(media, many=True)
+        return serializer.data
 
     def get_replies(self, tweet):
         return tweet.replied_by.all().count()
@@ -78,6 +116,7 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         exclude = ['created_at']
 
     author = UserSerializer(read_only=True)
+    media = serializers.SerializerMethodField()
     retweets = serializers.SerializerMethodField()
     user_retweet = serializers.SerializerMethodField()
     quotes = serializers.SerializerMethodField()
@@ -85,6 +124,11 @@ class TweetDetailSerializer(serializers.ModelSerializer):
     user_like = serializers.SerializerMethodField()
     replied_tweet = serializers.SerializerMethodField()
     replying_tweets = serializers.SerializerMethodField()
+
+    def get_media(self, tweet):
+        media = tweet.media.all()
+        serializer = MediaSerializer(media, many=True)
+        return serializer.data
 
     def get_retweets(self, tweet):
         return tweet.retweeted_by.all().count()
@@ -127,20 +171,27 @@ class TweetDetailSerializer(serializers.ModelSerializer):
         replying = tweet.replied_by.select_related('replying').all()
         if not replying:
             return []
-        replying = [x.replying for x in replying]
+        replying_list = [x.replying for x in replying]
         request = self.context['request']
-        replying_tweets = TweetSerializer(replying, context={'request': request}, many=True)
-        return replying_tweets.data
+        replying, previous_page, next_page = tweet_paginator(replying_list, 10, request)
+        serializer = TweetSerializer(replying, context={'request': request}, many=True)
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return data
 
 
 class ReplySerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)
     content = serializers.CharField(required=False, max_length=500)
-    media = serializers.FileField(required=False)
 
     def validate(self, data):
         content = data.get('content', '')
-        media = data.get('media', None)
+        media = self.context['request'].FILES.getlist('media')
         if not content and not media:
             raise serializers.ValidationError("neither content nor media")
         return data
@@ -157,10 +208,13 @@ class ReplySerializer(serializers.Serializer):
         author = self.context['request'].user
         reply_to = replied.author.user_id
         content = validated_data.get('content', '')
-        media = validated_data.get('media', None)
+        media_list = self.context['request'].FILES.getlist('media')
 
-        replying = Tweet.objects.create(tweet_type=tweet_type, author=author, reply_to=reply_to, content=content, media=media)
+        replying = Tweet.objects.create(tweet_type=tweet_type, author=author, reply_to=reply_to, content=content)
         reply = Reply.objects.create(replied=replied, replying=replying)
+
+        for media in media_list:
+            tweet_media = TweetMedia.objects.create(media=media, tweet=replying)
 
         return True
 
@@ -180,15 +234,18 @@ class RetweetSerializer(serializers.Serializer):
         author = retweeted.author
         retweeting_user = me.user_id
         content = retweeted.content
-        media = retweeted.media
         written_at = retweeted.written_at
 
         exist = retweeted.retweeted_by.filter(user=me)
         if not exist:
-            retweeting = Tweet.objects.create(tweet_type=tweet_type, author=author, retweeting_user=retweeting_user, content=content, media=media, written_at=written_at)
+            retweeting = Tweet.objects.create(tweet_type=tweet_type, author=author, retweeting_user=retweeting_user, content=content, written_at=written_at)
             retweet = Retweet.objects.create(retweeted=retweeted, retweeting=retweeting, user=me)
         else:
             false = Retweet.objects.create(retweeted=retweeted, retweeting=retweeted, user=me)
+
+        media_list = retweeted.media.all()
+        for media in media_list:
+            tweet_media = TweetMedia.objects.create(media=media.media, tweet=retweeting)
 
         return True
 
@@ -227,7 +284,15 @@ class HomeSerializer(serializers.Serializer):
         q |= (Q(author=me) & ~Q(tweet_type='RETWEET'))                                      # tweets written(or replied, quoted) by me
         q |= (Q(retweeting_user=me.user_id) & Q(tweet_type='RETWEET'))                      # tweets retweeted by me
 
-        tweets = Tweet.objects.filter(q).order_by('-created_at')
+        tweet_list = Tweet.objects.filter(q).order_by('-created_at')
         request = self.context['request']
+        tweets, previous_page, next_page = tweet_paginator(tweet_list, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
-        return serializer.data
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return data
