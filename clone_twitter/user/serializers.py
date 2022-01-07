@@ -150,7 +150,7 @@ class UserFollowSerializer(serializers.ModelSerializer):
             profile_img = follow.follower.profile_img.get()
         except ProfileMedia.DoesNotExist:
             return ProfileMedia.default_profile_img
-        return profile_img.media if profile_img.media else profile_img.image_url
+        return profile_img.media.url if profile_img.media else profile_img.image_url
 
     def get_follows_me(self, follow):
         me = self.context['request'].user
@@ -190,7 +190,7 @@ class UserFollowingSerializer(serializers.ModelSerializer):
             profile_img = follow.following.profile_img.get()
         except ProfileMedia.DoesNotExist:
             return ProfileMedia.default_profile_img
-        return profile_img.media if profile_img.media else profile_img.image_url
+        return profile_img.media.url if profile_img.media else profile_img.image_url
 
     def get_follows_me(self, follow):
         me = self.context['request'].user
@@ -239,7 +239,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             profile_img = obj.profile_img.get()
         except ProfileMedia.DoesNotExist:
             return ProfileMedia.default_profile_img
-        return profile_img.media if profile_img.media else profile_img.image_url
+        return profile_img.media.url if profile_img.media else profile_img.image_url
 
 class UserInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
@@ -276,7 +276,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             profile_img = obj.profile_img.get()
         except ProfileMedia.DoesNotExist:
             return ProfileMedia.default_profile_img
-        return profile_img.media if profile_img.media else profile_img.image_url
+        return profile_img.media.url if profile_img.media else profile_img.image_url
 
     def get_tweets(self, obj):
         tweet_list = obj.tweets.all().order_by('-created_at')
@@ -345,7 +345,7 @@ class UserSearchInfoSerializer(serializers.ModelSerializer):
             profile_img = obj.profile_img.get()
         except ProfileMedia.DoesNotExist:
             return ProfileMedia.default_profile_img
-        return profile_img.media if profile_img.media else profile_img.image_url
+        return profile_img.media.url if profile_img.media else profile_img.image_url
     
     def get_tweets(self, obj):
         tweets = obj.tweets.all()
