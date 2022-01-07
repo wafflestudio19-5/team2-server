@@ -300,56 +300,33 @@ class KakaoCallbackView(APIView):
             return response
             # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
-UNLINK_REDIRECT_URI = get_secret("UNLINK")
+# UNLINK_REDIRECT_URI = get_secret("UNLINK")
+ADMIN_KEY = get_secret("ADMIN_KEY")
 
-class KaKaoUnlinkView(APIView):
-    permission_classes = (permissions.AllowAny,)
+class KakaoUnlinkView(APIView): # deactivate
+    permission_classes = (permissions.IsAuthenticated, )
 
-    def get(self, request):
-        kakao_auth_url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
-        response = redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={UNLINK_REDIRECT_URI}')
-        return response
-
-
-class KakaoUnlinkCallbackView(APIView): # deactivate
-    permission_classes = (permissions.AllowAny, )
-
-    def get(self, request):
+    def post(self, request):
         me = request.user
         if not hasattr(me, 'social_account'):  # TODO add account type checking after google social login
             return Response({'message': "normal user cannot deactivate account via this api"}, status=status.HTTP_400_BAD_REQUEST)
 
-        kakao_auth_url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
-        redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={UNLINK_REDIRECT_URI}')
-        # 1. get access token TODO: Q. our service does not save kakao access token..right?
-        code = request.GET.get("code")
-        kakao_token_url = "https://kauth.kakao.com/oauth/token"
-        data = {
-            'grant_type': 'authorization_code',
-            'client_id': KAKAO_KEY,
-            'redirect_uri': UNLINK_REDIRECT_URI,
-            'code': code,
-            # 'client_secret': '', # Not required but.. for security
-        }
-        response = requests.post(kakao_token_url, data=data).json()
-        access_token = response.get("access_token")
-        if not access_token:  #TODO: link
-            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get access_token"
-            response = redirect(url)
-            return response
-
-        # 2. unlink kakao api
+        kakao_id = me.social_account.account_id
+        # 2. unlink kakao account
         kakao_unlink_url = "https://kapi.kakao.com/v1/user/unlink"
-        user_info_response = requests.post(kakao_unlink_url, headers={"Authorization": f"Bearer ${access_token}"}, ).json()
-        kakao_id = user_info_response.get("id")
+        data = {
+            'target_id_type': 'user_id',
+            'target_id': kakao_id,
+        }
+        user_unlink_response = requests.post(kakao_unlink_url, data=data, headers={"Authorization": f"KakaoAK ${ADMIN_KEY}",
+                                             "Content-Type": "application/x-www-form-urlencoded"}).json()
+        unlinked_user_id = user_unlink_response.get("id")
 
+        if not unlinked_user_id:
+            return Response({'message': "failed to get unlinked user_id"}, status=status.HTTP_400_BAD_REQUEST)
         # 3. delete related social account object
-        try:
-            kakao_account = SocialAccount.objects.get(account_id=kakao_id)
-        except SocialAccount.DoesNotExist:
-            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get social_account"
-            response = redirect(url)
-            return response
+        kakao_account = SocialAccount.objects.get(account_id=kakao_id)
+        me = kakao_account.user
 
         # delete related retweets
         retweets = me.retweets.select_related('retweeting').all()
@@ -357,10 +334,7 @@ class KakaoUnlinkCallbackView(APIView): # deactivate
             retweet.retweeting.delete()
 
         kakao_account.delete()
-        url = FRONT_URL + "oauth/callback/kakao/?code=" + "" + "&user_id=" + user.user_id  #TODO ask Front
-        response = redirect(url)
-        return response
-        return Response({'success':True}, status=status.HTTP_200_OK)
+        return Response({'success':True, 'user_id':unlinked_user_id}, status=status.HTTP_200_OK)
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
     queryset = User.objects.all().reverse()
