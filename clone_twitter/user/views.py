@@ -1,6 +1,5 @@
 import json
 import rest_framework.pagination
-from clone_twitter.tweet.serializers import custom_paginator
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -149,6 +148,7 @@ class UserUnfollowView(APIView):
 class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Follow.objects.all()
     serializer_class = UserFollowSerializer
+    # TODO: 1. common serializer based on user model & manually make user list OR 2. separate 2serializers based on follow
     permission_classes = (permissions.IsAuthenticated,)
     pagination_class = user.paginations.FollowListPagination
 
@@ -390,14 +390,5 @@ class SearchPeopleView(APIView):
             .filter(num_keywords_included__gte=1) \
             .order_by('-num_keywords_in_username', '-num_keywords_included', '-num_followers')
 
-        people_list = [x for x in sorted_queryset]
-        people, previous_page, next_page = custom_paginator(people_list, 20, request)
-        serializer = UserSearchInfoSerializer(people, many=True, context={'request': request})
-        data = serializer.data
-
-        pagination_info = dict()
-        pagination_info['previous'] = previous_page
-        pagination_info['next'] = next_page
-
-        data.append(pagination_info)
-        return Response(data, status=status.HTTP_200_OK)
+        serializer = UserSearchInfoSerializer(sorted_queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
