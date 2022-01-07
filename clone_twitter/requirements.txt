@@ -5,7 +5,7 @@ pytz==2021.1
 sqlparse==0.4.1
 django-debug-toolbar==2.2
 djangorestframework==3.11.1
-djangorestframework-jwt
+djangorestframework-jwt~=1.11.0
 django-rest-authtoken
 drf-yasg # swagger
 django-cors-headers
@@ -13,3 +13,4 @@ boto3 # access to aws
 django-storages
 Pillow
 factory-boy
+requests~=2.26.0
