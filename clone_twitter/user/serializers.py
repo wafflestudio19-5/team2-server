@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 import re
-from tweet.serializers import TweetSerializer
+from tweet.serializers import TweetSerializer, custom_paginator
 from user.models import Follow
 from django.db.models import Q
 
@@ -249,9 +249,18 @@ class UserInfoSerializer(serializers.ModelSerializer):
         )
 
     def get_tweets(self, obj):
-        tweets = obj.tweets.all().order_by('-written_at')
-        serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
-        return serialized_tweets.data
+        tweet_list = obj.tweets.all().order_by('-created_at')
+        request = self.context['request']
+        tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
+        serializer = TweetSerializer(tweets, many=True, context={'request': request})
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return data
 
     def get_tweets_num(self, obj):
         return obj.tweets.all().count()
