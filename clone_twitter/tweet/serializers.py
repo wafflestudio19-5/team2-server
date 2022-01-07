@@ -89,7 +89,8 @@ class TweetWriteSerializer(serializers.Serializer):
 
         media_list = self.context['request'].FILES.getlist('media')
         for media in media_list:
-            tweet_media = TweetMedia.objects.create(media=media, tweet=tweet)
+            if media is not None:
+                tweet_media = TweetMedia.objects.create(media=media, tweet=tweet)
 
         return tweet
 
@@ -281,7 +282,8 @@ class ReplySerializer(serializers.Serializer):
 
         media_list = self.context['request'].FILES.getlist('media')
         for media in media_list:
-            tweet_media = TweetMedia.objects.create(media=media, tweet=replying)
+            if media is not None:
+                tweet_media = TweetMedia.objects.create(media=media, tweet=replying)
 
         return True
 
@@ -312,7 +314,8 @@ class RetweetSerializer(serializers.Serializer):
 
         media_list = retweeted.media.all()
         for media in media_list:
-            tweet_media = TweetMedia.objects.create(media=media.media, tweet=retweeting)
+            if media is not None:
+                tweet_media = TweetMedia.objects.create(media=media.media, tweet=retweeting)
 
         return True
 
@@ -345,7 +348,8 @@ class QuoteSerializer(serializers.Serializer):
         quote = Quote.objects.create(quoted=quoted, quoting=quoting)
 
         for media in media_list:
-            tweet_media = TweetMedia.objects.create(media=media, tweet=quoting)
+            if meida is not None:
+                tweet_media = TweetMedia.objects.create(media=media, tweet=quoting)
 
         return True
 
