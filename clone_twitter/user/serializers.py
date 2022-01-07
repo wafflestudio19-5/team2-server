@@ -234,7 +234,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
         )
 
     def get_tweets(self, obj):
-        tweets = obj.tweets.all()
+        tweets = obj.tweets.all().order_by('-created_at')
         serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
         return serialized_tweets.data
 
