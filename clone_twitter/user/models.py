@@ -1,5 +1,8 @@
 from io import BytesIO
 
+from django.utils.timezone import now
+import os
+from random import randint
 import requests
 from django.contrib.auth import get_user_model
 from django.core.files import File
@@ -18,9 +21,20 @@ class CustomUserManager(BaseUserManager):
         #    raise ValueError('이메일을 설정해주세요.')
         # if email:  # changed
         #    email = self.normalize_email(email)
+        img = extra_fields.pop('profile_img', None)  # url(kakao) / file
+        url = extra_fields.pop('kakao_profile', None)
+        is_social = extra_fields.pop('is_social', False)
         user = self.model(user_id=user_id, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
+
+        profile_media = ProfileMedia(user=user)
+        if is_social:
+            profile_media.img_url = url
+        elif img:
+            profile_media.media = img
+        profile_media.save()
+
         return user
 
     def create_user(self, user_id, password=None, **extra_fields):
@@ -52,7 +66,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)
 
     # profile related fields
-    profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
+    # profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
     header_img = models.ImageField(null=True, blank=True, upload_to='header/')
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
@@ -64,23 +78,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
 
     objects = CustomUserManager()
-
-    def download(self, url):
-        response = requests.get(url)
-        binary_data = response.content
-        temp_file = BytesIO()
-        temp_file.write(binary_data)
-        temp_file.seek(0)
-        return temp_file
-
-    def save(self, *args, **kwargs):
-        if not self.profile_img:
-            default_profile_img_url = 'https://team2-django-media.s3.ap-northeast-2.amazonaws.com/media/profile/default_user_profile.jpeg'
-
-            temp_file = self.download(default_profile_img_url)
-            file_name = 'default_user_profile.jpeg'
-            self.profile_img.save(file_name, File(temp_file))
-            super().save()
 
 class Follow(models.Model):
     follower = models.ForeignKey(get_user_model(), related_name='follower', on_delete=models.CASCADE)
@@ -97,3 +94,14 @@ class SocialAccount(models.Model):
     user = models.OneToOneField(get_user_model(), related_name='social_account', on_delete=models.CASCADE)
     type = models.CharField(choices=TYPES, max_length=10)
     account_id = models.IntegerField() # only for kakao login -> unique = true but.. if we add other social login then..
+
+class ProfileMedia(models.Model):
+    default_profile_img = 'https://team2-django-media.s3.ap-northeast-2.amazonaws.com/media/profile/default_user_profile.jpeg'
+
+    # def profile_media_directory_path(self, filename):
+    #    filename_base, filename_ext = os.path.splitext(filename)
+    #    return 'profile/' + self.user.id + '/' + now().strftime('%Y%m%d_%H%M%S') + '_' + str(randint(10000000, 99999999)) + filename_ext
+
+    media = models.FileField(upload_to='profile/')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_img')
+    image_url = models.URLField(default=default_profile_img) #only used for social login user / default image

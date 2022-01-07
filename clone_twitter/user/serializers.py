@@ -27,11 +27,13 @@ class UserCreateSerializer(serializers.Serializer):
     password = serializers.CharField(required=True)
     phone_number = serializers.CharField(required=False, allow_blank=True)
     profile_img = serializers.ImageField(required=False)  #TODO set to default image
+    kakao_profile = serializers.URLField(required=False)
     header_img = serializers.ImageField(required=False)
     bio = serializers.CharField(required=False)
     birth_date = serializers.DateField(required=False)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
     allow_notification = serializers.BooleanField(required=False, default=True)
+    is_social = serializers.BooleanField(required=False, default=False)
 
     def validate(self, data):
         user_id = data.get('user_id')
