@@ -102,6 +102,6 @@ class ProfileMedia(models.Model):
     #    filename_base, filename_ext = os.path.splitext(filename)
     #    return 'profile/' + self.user.id + '/' + now().strftime('%Y%m%d_%H%M%S') + '_' + str(randint(10000000, 99999999)) + filename_ext
 
-    media = models.FileField(upload_to='profile/')
+    media = models.ImageField(upload_to='profile/')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_img')
     image_url = models.URLField(default=default_profile_img) #only used for social login user / default image

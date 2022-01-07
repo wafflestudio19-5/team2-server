@@ -3,10 +3,12 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia, Quote
-
+from user.models import ProfileMedia
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    profile_img = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -14,9 +16,17 @@ class UserSerializer(serializers.ModelSerializer):
             'user_id',
             'profile_img',
         ]
+    def get_profile_img(self, obj):
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media.url if profile_img.media else profile_img.image_url
 
 
 class UserListSerializer(serializers.ModelSerializer):
+    profile_img = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -34,6 +44,12 @@ class UserListSerializer(serializers.ModelSerializer):
         following = user.following.filter(follower=me).count()
         return following == 1
 
+    def get_profile_img(self, user):
+        try:
+            profile_img = user.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media.url if profile_img.media else profile_img.image_url
 
 def custom_paginator(obj_list, n, request):
     paginator = Paginator(obj_list, n)

@@ -15,7 +15,7 @@ from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError
 from django.db.models import Q, Count
-from user.models import Follow, User, SocialAccount
+from user.models import Follow, User, SocialAccount, ProfileMedia
 import requests
 from twitter.settings import get_secret, FRONT_URL
 # Create your views here.
@@ -272,6 +272,12 @@ class KakaoCallbackView(APIView):
             return response
             # return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
 
+        user_info = user_info_response["kakao_account"]
+        profile = user_info["profile"]
+        nickname = profile['nickname']
+        profile_img_url = profile.get("profile_image_url")
+        is_default_image = profile.get("is_default_image", True)
+        email = user_info.get("email", None)
 
         # 3. connect kakao account - user
         # user signed up with kakao -> enable kakao login (Q. base login?)
@@ -286,17 +292,31 @@ class KakaoCallbackView(APIView):
             # return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
 
         # case 2. new user signup with kakao (might use profile info)
-        else:
+        else:  #TODO exception duplicate email
             random_id = unique_random_id_generator()
             fake_email = unique_random_email_generator()
-            user = User(user_id=random_id, email=fake_email)  # (tmp) user_id, fake email
+
+            if email and User.objects.filter(email=email).exists():
+                url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=duplicate email"
+                response = redirect(url)
+                return response
+
+            user = User(user_id=random_id, email=email, username=nickname)
             user.set_unusable_password()  # user signed up with kakao can only login via kakao login
             user.save()
+
+            if not is_default_image:
+                profile_media = ProfileMedia(image_url=profile_img_url)
+            else:
+                profile_media = ProfileMedia()
+            profile_media.user = user
+            profile_media.save()
+
             kakao_account = SocialAccount.objects.create(account_id=kakao_id, type='kakao', user=user)
             token = jwt_token_of(user)
             url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
-            # response['Authorization'] = "JWT " + token
+
             return response
             # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
