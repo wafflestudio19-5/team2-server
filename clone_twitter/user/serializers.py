@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 import re
 from tweet.serializers import TweetSerializer, custom_paginator
-from user.models import Follow
+from user.models import Follow, ProfileMedia
 from django.db.models import Q
 
 # jwt token setting
@@ -146,7 +146,10 @@ class UserFollowSerializer(serializers.ModelSerializer):
         )
 
     def get_profile_img(self, follow):
-        profile_img = follow.follower.profile_img
+        try:
+            profile_img = follow.follower.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
         return profile_img.media if profile_img.media else profile_img.image_url
 
     def get_follows_me(self, follow):
@@ -183,7 +186,10 @@ class UserFollowingSerializer(serializers.ModelSerializer):
         )
 
     def get_profile_img(self, follow):
-        profile_img = follow.following.profile_img
+        try:
+            profile_img = follow.following.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
         return profile_img.media if profile_img.media else profile_img.image_url
 
     def get_follows_me(self, follow):
@@ -229,7 +235,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         )
 
     def get_profile_img(self, obj):
-        profile_img = obj.profile_img
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
         return profile_img.media if profile_img.media else profile_img.image_url
 
 class UserInfoSerializer(serializers.ModelSerializer):
@@ -263,7 +272,10 @@ class UserInfoSerializer(serializers.ModelSerializer):
         )
 
     def get_profile_img(self, obj):
-        profile_img = obj.profile_img
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
         return profile_img.media if profile_img.media else profile_img.image_url
 
     def get_tweets(self, obj):
@@ -329,7 +341,10 @@ class UserSearchInfoSerializer(serializers.ModelSerializer):
         )
 
     def get_profile_img(self, obj):
-        profile_img = obj.profile_img
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
         return profile_img.media if profile_img.media else profile_img.image_url
     
     def get_tweets(self, obj):
