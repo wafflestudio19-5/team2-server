@@ -1,4 +1,8 @@
+from io import BytesIO
+
+import requests
 from django.contrib.auth import get_user_model
+from django.core.files import File
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
@@ -48,7 +52,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)
 
     # profile related fields
-    profile_img = models.ImageField(null=True, blank=True, upload_to='profile/', default='default_user_profile.jpeg')
+    profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
     header_img = models.ImageField(null=True, blank=True, upload_to='header/')
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
@@ -60,6 +64,23 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
 
     objects = CustomUserManager()
+
+    def download(self, url):
+        response = requests.get(url)
+        binary_data = response.content
+        temp_file = BytesIO()
+        temp_file.write(binary_data)
+        temp_file.seek(0)
+        return temp_file
+
+    def save(self, *args, **kwargs):
+        if not self.profile_img:
+            default_profile_img_url = 'https://team2-django-media.s3.ap-northeast-2.amazonaws.com/media/profile/default_user_profile.jpeg'
+
+            temp_file = self.download(default_profile_img_url)
+            file_name = 'default_user_profile.jpeg'
+            self.profile_img.save(file_name, File(temp_file))
+            super().save()
 
 class Follow(models.Model):
     follower = models.ForeignKey(get_user_model(), related_name='follower', on_delete=models.CASCADE)
