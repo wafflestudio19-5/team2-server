@@ -1,3 +1,4 @@
+import tweet.paginations
 from django.db import IntegrityError
 from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, When
@@ -204,6 +205,8 @@ class HomeView(APIView):        # home
 class TweetSearchViewSet(viewsets.GenericViewSet):
     serializer_class = TweetSearchInfoSerializer
     permission_classes = (permissions.AllowAny,)
+    pagination_class = tweet.paginations.TweetListPagination
+
     # GET /search/top/
     @action(detail=False, methods=['get'], url_path='top', url_name='top')
     def get_top(self, request):
@@ -217,8 +220,14 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
                 num_replies=Count('replied_by'), num_retweets=Count('retweeted_by'), num_likes=Count('liked_by')) \
             .filter(tweet_type='GENERAL', num_keywords_included__gte=1, written_at__gte=datetime.now()-timedelta(weeks=1)) \
             .order_by('-num_keywords_included', '-num_retweets', '-num_likes', '-num_replies')
+        
+        page = self.paginate_queryset(sorted_queryset)
 
-        serializer = TweetSearchInfoSerializer(sorted_queryset, many=True)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(sorted_queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # GET /search/latest/
@@ -234,7 +243,13 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
             .filter(Q(tweet_type='GENERAL') | Q(tweet_type='REPLY'), num_keywords_included__gte=1) \
             .order_by('-num_keywords_included', '-written_at')
 
-        serializer = TweetSearchInfoSerializer(sorted_queryset, many=True)
+        page = self.paginate_queryset(sorted_queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(sorted_queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
