@@ -139,10 +139,10 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         page = self.paginate_queryset(followers)
 
         if page is not None:
-            serializer = self.get_serializer(page, many=True)
+            serializer = self.get_serializer(page, many=True, context={'request': request})
             return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(followers, many=True)
+        serializer = self.get_serializer(followers, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # GET /api/v1/follow_list/{lookup}/following/
@@ -150,14 +150,13 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     def following(self, request, pk=None):
         user = get_object_or_404(User, user_id=pk)
         followings = Follow.objects.filter(follower=user).order_by('-created_at')
-        me = request.user.pk
         page = self.paginate_queryset(followings)
 
         if page is not None:
-            serializer = UserFollowingSerializer(page, many=True, context={'me': me})
+            serializer = UserFollowingSerializer(page, many=True, context={'request': request})
             return self.get_paginated_response(serializer.data)
 
-        serializer = UserFollowingSerializer(followings, many=True, context={'me': me})
+        serializer = UserFollowingSerializer(followings, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class UserInfoViewSet(viewsets.GenericViewSet):
@@ -290,7 +289,7 @@ class UserRecommendView(APIView):  # recommend random ? users who I don't follow
         unfollowing_users = self.queryset.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
 
         if unfollowing_users.count() < 3:
-            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': "not enough users to recommend"})
 
         serializer = UserRecommendSerializer(unfollowing_users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -311,7 +310,7 @@ class FollowRecommendView(APIView):  # recommend random ? users who I don't foll
         recommending_users = followings.exclude(Q(following__follower=me) | Q(pk=me.pk))[:3]
 
         if recommending_users.count() < 3:
-            return Response(status=status.HTTP_200_OK, data={'message': "not enough users to recommend"})
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': "not enough users to recommend"})
 
         serializer = UserRecommendSerializer(recommending_users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
