@@ -165,7 +165,7 @@ class DeleteTweetTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_delete_tweet_wrong_id(self):
-        response = self.client.delete('/api/v1/tweet/-1/', HTTP_AUTHORIZATION=self.other_token)
+        response = self.client.delete('/api/v1/tweet/0/', HTTP_AUTHORIZATION=self.other_token)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_tweet_success(self):
@@ -863,6 +863,7 @@ class HomeTestCase(TestCase):
         self.assertEqual(following_tweet['likes'], 0)
         self.assertFalse(following_tweet['user_like'])
 
+
 class GetSearchTweetTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -882,7 +883,7 @@ class GetSearchTweetTestCase(TestCase):
                 bio='',
                 birth_date=None
             ) for i in range(len(user_id_list)) ]
-            
+
         cls.tokens = ['JWT ' + jwt_token_of(User.objects.get(email='email%d@email.com' % i))
             for i in range(len(user_id_list))]
 
@@ -948,12 +949,12 @@ class GetSearchTweetTestCase(TestCase):
             )
 
     def test_get_search_top(self):
-        response = self.client.get(                            
+        response = self.client.get(
             '/api/v1/search/top/',
             {'query': 'bb cc  aa dd ee'},
             content_type='application/json',
             HTTP_AUTHORIZATION=self.tokens[0])
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         print(list(map(lambda x:x['author']['user_id'], response.json())))
@@ -961,16 +962,16 @@ class GetSearchTweetTestCase(TestCase):
         ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2'])
         self.assertEqual(list(map(lambda x:x['tweet_type'], response.json())),
         ['GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])
-        
+
     def test_get_search_latest(self):
-        response = self.client.get(                            
+        response = self.client.get(
             '/api/v1/search/latest/',
             {'query': 'bb cc  aa dd ee'},
             content_type='application/json',
             HTTP_AUTHORIZATION=self.tokens[0])
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         print(list(map(lambda x:x['author']['user_id'], response.json())))
         self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json())),
         ['test9', 'test6', 'test3', 'test7', 'test4', 'test8ee', 'test3', 'test3', 'test4', 'test5', 'test2', 'test1'])

@@ -259,10 +259,10 @@ class UserInfoSerializer(serializers.ModelSerializer):
         return obj.tweets.all().count()
 
     def get_following(self, obj):
-        return obj.following.all().count()
+        return obj.follower.all().count()
 
     def get_follower(self, obj):
-        return obj.follower.all().count() 
+        return obj.following.all().count()
 
     # at least 4, at most 15 letters
     # only letters, digits, underscore(_) are allowed
