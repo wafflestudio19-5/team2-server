@@ -270,7 +270,7 @@ class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
         if tweet.tweet_type == 'RETWEET':
             tweet = tweet.retweeting.all()[0].retweeted
 
-        quotes = tweet.quoted_by.all()
+        quotes = tweet.quoted_by.select_related('quoting').all().order_by('-quoting__created_at')
         tweet_list = [x.quoting for x in quotes]
         tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
@@ -278,6 +278,7 @@ class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
 
         pagination_info = dict()
         pagination_info['previous'] = previous_page
+
         pagination_info['next'] = next_page
 
         data.append(pagination_info)
