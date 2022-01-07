@@ -978,7 +978,6 @@ class GetSearchTweetTestCase(TestCase):
         self.assertEqual(list(map(lambda x:x['tweet_type'], response.json())),
         ['GENERAL', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])
 
-
 class QuoteTestCase(TestCase):
 
     @classmethod

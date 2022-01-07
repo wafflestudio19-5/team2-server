@@ -304,4 +304,3 @@ class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
 
         data.append(pagination_info)
         return Response(serializer.data, status=status.HTTP_200_OK)
-

@@ -348,11 +348,10 @@ class QuoteSerializer(serializers.Serializer):
         quote = Quote.objects.create(quoted=quoted, quoting=quoting)
 
         for media in media_list:
-            if meida is not None:
+            if media is not None:
                 tweet_media = TweetMedia.objects.create(media=media, tweet=quoting)
 
         return True
-
 
 class LikeSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)
