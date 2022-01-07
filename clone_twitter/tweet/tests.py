@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.db import transaction
 from rest_framework import status
 from user.serializers import jwt_token_of
+from datetime import datetime, timedelta
 
 class UserFactory(DjangoModelFactory):
     class Meta:
@@ -53,6 +54,26 @@ class RetweetFactory(DjangoModelFactory):
     @classmethod
     def create(cls, **kwargs):
         retweet = Retweet.objects.create(**kwargs)
+        retweet.save()
+        return retweet
+
+class UserLikeFactory(DjangoModelFactory):
+    class Meta:
+        model = UserLike
+
+    @classmethod
+    def create(cls, **kwargs):
+        retweet = UserLike.objects.create(**kwargs)
+        retweet.save()
+        return retweet
+
+class ReplyFactory(DjangoModelFactory):
+    class Meta:
+        model = Reply
+
+    @classmethod
+    def create(cls, **kwargs):
+        retweet = Reply.objects.create(**kwargs)
         retweet.save()
         return retweet
 
@@ -628,6 +649,7 @@ class LikeCancelTestCase(TestCase):
             password='password',
             phone_number='010-1234-5678'
         )
+
         cls.user_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
 
         cls.other = UserFactory(
@@ -840,3 +862,117 @@ class HomeTestCase(TestCase):
         self.assertFalse(following_tweet['user_retweet'])
         self.assertEqual(following_tweet['likes'], 0)
         self.assertFalse(following_tweet['user_like'])
+
+class GetSearchTweetTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+
+        user_id_list = ['test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8ee', 'test9']
+        username_list = ['f', 'aa', 'aa', 'AA', 'aa', 'aa', 'eebbccdd', 'aabbcc', 'aabbcc', 'aabbcc']
+        content_list = ['M', 'T', 'E', 'mol', '?', 'ru', '', 'aaccdd', 'aa', 'aabbccddee']
+        written_time = [13, 1000000, 11, 1, 2, 3, 4, 6, 8, 10] # difference between current time and written time(sec)
+
+        cls.users = [
+            UserFactory(
+                email='email%d@email.com' % i,
+                user_id=user_id_list[i],
+                username=username_list[i],
+                password='password',
+                phone_number='010-0000-%04d' % i,
+                bio='',
+                birth_date=None
+            ) for i in range(len(user_id_list)) ]
+            
+        cls.tokens = ['JWT ' + jwt_token_of(User.objects.get(email='email%d@email.com' % i))
+            for i in range(len(user_id_list))]
+
+
+        cls.tweets = [
+            TweetFactory(
+                tweet_type = 'GENERAL',
+                author = cls.users[i],
+                content = content_list[i],
+                written_at = datetime.now() - timedelta(seconds=written_time[i])
+            ) for i in range(len(user_id_list))]
+
+        like_relation = [(0, 5), (1, 5), (2, 5), (0, 4), (1, 4), (0, 3)]
+        retweet_relation = [(0, 8), (1, 8), (0, 7), (0, 5), (0, 4), (0, 3), (0, 2), (0, 1)]
+        reply_relation = [(3, 2, 5), (4, 2, 7), (3, 1, 9)]
+        # third attribute: difference between current time and written time(sec)
+
+        cls.retweetings = []
+        cls.retweets = []
+        cls.likes = []
+        cls.replyings = []
+        cls.replies = []
+
+        for init, term in retweet_relation:
+            cls.retweetings.append(
+                TweetFactory(
+                    tweet_type = 'RETWEET',
+                    author = cls.users[init],
+                    content = cls.tweets[term].content,
+                    retweeting_user = cls.users[term].user_id)
+            )
+
+            cls.retweets.append(
+                RetweetFactory(
+                    retweeted = cls.tweets[term],
+                    retweeting = cls.retweetings[-1],
+                    user = cls.users[init])
+            )
+
+        for init, term in like_relation:
+            cls.likes.append(
+                UserLikeFactory(
+                    user = cls.users[init],
+                    liked = cls.tweets[term]
+                )
+            )
+
+        for init, term, delta in reply_relation:
+            cls.replyings.append(
+                TweetFactory(
+                    tweet_type = 'REPLY',
+                    author = cls.users[init],
+                    content = 'bbddcc',
+                    reply_to = cls.users[term].user_id,
+                    written_at = datetime.now() - timedelta(seconds=delta))
+            )
+
+            cls.replies.append(
+                ReplyFactory(
+                    replied = cls.tweets[term],
+                    replying = cls.replyings[-1],
+                )
+            )
+
+    def test_get_search_top(self):
+        response = self.client.get(                            
+            '/api/v1/search/top/',
+            {'query': 'bb cc  aa dd ee'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.tokens[0])
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        print(list(map(lambda x:x['author']['user_id'], response.json())))
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json())),
+        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2'])
+        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json())),
+        ['GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])
+        
+    def test_get_search_latest(self):
+        response = self.client.get(                            
+            '/api/v1/search/latest/',
+            {'query': 'bb cc  aa dd ee'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.tokens[0])
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        print(list(map(lambda x:x['author']['user_id'], response.json())))
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json())),
+        ['test9', 'test6', 'test3', 'test7', 'test4', 'test8ee', 'test3', 'test3', 'test4', 'test5', 'test2', 'test1'])
+        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json())),
+        ['GENERAL', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])

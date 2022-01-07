@@ -109,6 +109,25 @@ class TweetSerializer(serializers.ModelSerializer):
         user_like = tweet.liked_by.filter(user=me).count()
         return user_like == 1
 
+class TweetSearchInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tweet
+        fields = '__all__'
+
+    author = UserSerializer(read_only=True)
+    replies = serializers.SerializerMethodField()
+    retweets = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
+    
+
+    def get_replies(self, tweet):
+        return tweet.replied_by.all().count()
+
+    def get_retweets(self, tweet):
+        return tweet.retweeted_by.all().count()
+
+    def get_likes(self, tweet):
+        return tweet.liked_by.all().count()
 
 class TweetDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -183,7 +202,6 @@ class TweetDetailSerializer(serializers.ModelSerializer):
 
         data.append(pagination_info)
         return data
-
 
 class ReplySerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)
