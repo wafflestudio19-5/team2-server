@@ -208,6 +208,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     header_img = serializers.ImageField(allow_null=True)
     bio = serializers.CharField(allow_blank=True)
     birth_date =serializers.DateField(allow_null=True)
+    i_follow = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -216,8 +217,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_img',
             'header_img',
             'bio',
-            'birth_date'
+            'birth_date',
+            'i_follow',
         )
+
+    def get_i_follow(self, user):
+        me = self.context['request'].user
+        i_follow = user.following.filter(follower=me).count()
+        return i_follow == 1
+
 
 
 class UserInfoSerializer(serializers.ModelSerializer):

@@ -212,7 +212,7 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         else:
             user = get_object_or_404(User, user_id=pk)
 
-        serializer = UserProfileSerializer(user)
+        serializer = UserProfileSerializer(user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # PATCH /user/profile/
