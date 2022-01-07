@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 import re
 from tweet.serializers import TweetSerializer, custom_paginator
-from user.models import Follow
+from user.models import Follow, ProfileMedia
 from django.db.models import Q
 
 # jwt token setting
@@ -129,7 +129,7 @@ class UserFollowSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='follower.username')
     user_id = serializers.CharField(source='follower.user_id')
     bio = serializers.CharField(source='follower.bio')
-    profile_img = serializers.ImageField(source='follower.profile_img')
+    profile_img = serializers.SerializerMethodField()
     follows_me = serializers.SerializerMethodField()
     i_follow = serializers.SerializerMethodField()
 
@@ -144,6 +144,13 @@ class UserFollowSerializer(serializers.ModelSerializer):
             'profile_img',
             'i_follow',
         )
+
+    def get_profile_img(self, follow):
+        try:
+            profile_img = follow.follower.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media if profile_img.media else profile_img.image_url
 
     def get_follows_me(self, follow):
         me = self.context['request'].user
@@ -162,7 +169,7 @@ class UserFollowingSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='following.username')
     user_id = serializers.CharField(source='following.user_id')
     bio = serializers.CharField(source='following.bio')
-    profile_img = serializers.ImageField(source='following.profile_img')
+    profile_img = serializers.SerializerMethodField()
     follows_me = serializers.SerializerMethodField()
     i_follow = serializers.SerializerMethodField()
 
@@ -177,6 +184,13 @@ class UserFollowingSerializer(serializers.ModelSerializer):
             'profile_img',
             'i_follow'
         )
+
+    def get_profile_img(self, follow):
+        try:
+            profile_img = follow.following.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media if profile_img.media else profile_img.image_url
 
     def get_follows_me(self, follow):
         me = self.context['request'].user
@@ -204,10 +218,11 @@ class UserRecommendSerializer(serializers.ModelSerializer):
           
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField()
-    profile_img = serializers.ImageField(allow_null=True)
     header_img = serializers.ImageField(allow_null=True)
     bio = serializers.CharField(allow_blank=True)
     birth_date =serializers.DateField(allow_null=True)
+
+    profile_img = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -219,16 +234,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'birth_date'
         )
 
+    def get_profile_img(self, obj):
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media if profile_img.media else profile_img.image_url
 
 class UserInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
     user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
-    profile_img = serializers.ImageField(allow_null=True)
     header_img = serializers.ImageField(allow_null=True)
     bio = serializers.CharField(allow_blank=True)
     created_at = serializers.DateTimeField()
     birth_date = serializers.DateField(allow_null=True)
     
+    profile_img = serializers.SerializerMethodField()
     tweets = serializers.SerializerMethodField()
     tweets_num = serializers.SerializerMethodField()
     following = serializers.SerializerMethodField()
@@ -249,6 +270,13 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'following',
             'follower'
         )
+
+    def get_profile_img(self, obj):
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media if profile_img.media else profile_img.image_url
 
     def get_tweets(self, obj):
         tweet_list = obj.tweets.all().order_by('-created_at')
@@ -293,8 +321,9 @@ class UserInfoSerializer(serializers.ModelSerializer):
 class UserSearchInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
     user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
-    profile_img = serializers.ImageField(allow_null=True)
     bio = serializers.CharField(allow_blank=True)
+
+    profile_img = serializers.SerializerMethodField()
     tweets_num = serializers.SerializerMethodField()
     following = serializers.SerializerMethodField()
     follower = serializers.SerializerMethodField()
@@ -311,6 +340,13 @@ class UserSearchInfoSerializer(serializers.ModelSerializer):
             'follower'
         )
 
+    def get_profile_img(self, obj):
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media if profile_img.media else profile_img.image_url
+    
     def get_tweets(self, obj):
         tweets = obj.tweets.all()
         serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
