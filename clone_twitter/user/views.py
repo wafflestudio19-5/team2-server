@@ -318,7 +318,8 @@ class KakaoUnlinkView(APIView): # deactivate
             'target_id_type': 'user_id',
             'target_id': kakao_id,
         }
-        user_unlink_response = requests.post(kakao_unlink_url, data=data, headers={"Authorization": f"KakaoAK ${ADMIN_KEY}",
+        auth_header = "KakaoAK " + ADMIN_KEY
+        user_unlink_response = requests.post(kakao_unlink_url, data=data, headers={"Authorization": auth_header,
                                              "Content-Type": "application/x-www-form-urlencoded"}).json()
         unlinked_user_id = user_unlink_response.get("id")
 
@@ -333,7 +334,7 @@ class KakaoUnlinkView(APIView): # deactivate
         for retweet in retweets:
             retweet.retweeting.delete()
 
-        kakao_account.delete()
+        me.delete()
         return Response({'success':True, 'user_id':unlinked_user_id}, status=status.HTTP_200_OK)
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
