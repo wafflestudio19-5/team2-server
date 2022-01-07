@@ -11,8 +11,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tweet.models import Tweet, Retweet, UserLike
+
 from tweet.serializers import TweetSearchInfoSerializer, TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, \
-    LikeSerializer, HomeSerializer
+    LikeSerializer, HomeSerializer, UserListSerializer, custom_paginator, TweetSerializer, QuoteSerializer
 from datetime import datetime, timedelta
 
 
@@ -56,9 +57,9 @@ class TweetPostView(APIView):      # write & delete tweet
         if (tweet.tweet_type != 'RETWEET' and tweet.author != me) or (tweet.tweet_type == 'RETWEET' and tweet.retweeting_user != me.user_id):
             return Response(status=status.HTTP_403_FORBIDDEN, data={'message': 'you can delete only your tweets'})
 
-        retweetings = tweet.retweeted_by.all()
-        for retweeting in retweetings:
-            retweeting.retweeting.delete()
+        retweets = tweet.retweeted_by.select_related('retweeting').all()
+        for retweet in retweets:
+            retweet.retweeting.delete()
 
         tweet.delete()
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully delete tweet'})
@@ -147,7 +148,32 @@ class RetweetView(APIView):       # do/cancel retweet
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully cancel retweet'})
 
 
-class LikeView(APIView):       # do/cancel like
+class QuoteView(APIView):            # quote-retweet
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='tweet_id'),
+            'content': openapi.Schema(type=openapi.TYPE_STRING, description='content'),
+            'media': openapi.Schema(type=openapi.TYPE_FILE, description='media'),
+        }
+    ))
+
+    def post(self, request):
+        serializer = QuoteSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            success = serializer.save()
+            if not success:
+                return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'no such tweet exists'})
+        except IntegrityError:
+            return Response(status=status.HTTP_409_CONFLICT)
+        return Response(status=status.HTTP_201_CREATED, data={'message': 'successfully quote and retweet'})
+
+
+class LikeView(APIView):       # do like
     permission_classes = (permissions.IsAuthenticated,)
 
     @swagger_auto_schema(request_body=openapi.Schema(
@@ -201,6 +227,7 @@ class HomeView(APIView):     # home
         me = request.user
         serializer = HomeSerializer(me, context={'request': request})
         return Response(serializer.data)
+
 class TweetSearchViewSet(viewsets.GenericViewSet):
     serializer_class = TweetSearchInfoSerializer
     permission_classes = (permissions.AllowAny,)
@@ -235,4 +262,71 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
             .order_by('-num_keywords_included', '-written_at')
 
         serializer = TweetSearchInfoSerializer(sorted_queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/tweet/{lookup}/retweets/
+    @action(detail=True, methods=['GET'])
+    def retweets(self, request, pk):
+        tweet = get_object_or_404(Tweet, pk=pk)
+
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+
+        retweets = tweet.retweeted_by.all()
+        retweeting_user_list = [x.user for x in retweets]
+        retweeting_users, previous_page, next_page = custom_paginator(retweeting_user_list, 20, request)
+        serializer = UserListSerializer(retweeting_users, many=True, context={'request': request})
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return Response(data, status=status.HTTP_200_OK)
+
+    # GET /api/v1/follow_list/{lookup}/following/
+    @action(detail=True, methods=['GET'])
+    def quotes(self, request, pk=None):
+        tweet = get_object_or_404(Tweet, pk=pk)
+
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+
+        quotes = tweet.quoted_by.all()
+        tweet_list = [x.quoting for x in quotes]
+        tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
+        serializer = TweetSerializer(tweets, many=True, context={'request': request})
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return Response(data=data, status=status.HTTP_200_OK)
+
+    # GET /api/v1/tweet/{lookup}/likes/
+    @action(detail=True, methods=['GET'])
+    def likes(self, request, pk):
+        tweet = get_object_or_404(Tweet, pk=pk)
+
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+
+        userlikes = tweet.liked_by.all()
+        liking_user_list = [x.user for x in userlikes]
+        liking_users, previous_page, next_page = custom_paginator(liking_user_list, 20, request)
+        serializer = UserListSerializer(liking_users, many=True, context={'request': request})
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
         return Response(serializer.data, status=status.HTTP_200_OK)

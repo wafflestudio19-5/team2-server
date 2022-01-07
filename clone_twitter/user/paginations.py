@@ -2,7 +2,7 @@ from rest_framework import pagination
 from rest_framework.views import Response
 
 class FollowListPagination(pagination.PageNumberPagination):
-    page_size = 5
+    page_size = 20
 
     def get_paginated_response(self, data):
         return Response({
