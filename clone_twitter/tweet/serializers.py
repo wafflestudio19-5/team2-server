@@ -24,12 +24,12 @@ class UserListSerializer(serializers.ModelSerializer):
             'user_id',
             'profile_img',
             'bio',
-            'following',
+            'is_following',
         ]
 
-    following = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
 
-    def get_following(self, user):
+    def get_is_following(self, user):
         me = self.context['request'].user
         following = user.following.filter(follower=me).count()
         return following == 1
