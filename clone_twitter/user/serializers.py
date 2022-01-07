@@ -202,9 +202,8 @@ class UserRecommendSerializer(serializers.ModelSerializer):
           
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField()
-    # TODO add image field after setting image server
-    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
-    # header_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    header_img = serializers.ImageField(allow_null=True, allow_blank=True)
     bio = serializers.CharField(allow_blank=True)
     birth_date =serializers.DateField(allow_null=True)
 
@@ -212,8 +211,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ( 
             'username',
-            #'profile_img',
-            #'header_img',
+            'profile_img',
+            'header_img',
             'bio',
             'birth_date'
         )
@@ -222,9 +221,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class UserInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
     user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
-    # TODO add image field after setting image server
-    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
-    # header_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    header_img = serializers.ImageField(allow_null=True, allow_blank=True)
     bio = serializers.CharField(allow_blank=True)
     created_at = serializers.DateTimeField()
     birth_date = serializers.DateField(allow_null=True)
@@ -239,8 +237,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
         fields = (
             'username',
             'user_id',
-            # 'profile_img',
-            # 'header_img',
+            'profile_img',
+            'header_img',
             'bio',
             'created_at',
             'birth_date',
@@ -284,8 +282,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
 class UserSearchInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
     user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
-    # TODO add image field after setting image server
-    # profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
+    profile_img = serializers.ImageField(allow_null=True, allow_blank=True)
     bio = serializers.CharField(allow_blank=True)
     tweets_num = serializers.SerializerMethodField()
     following = serializers.SerializerMethodField()
@@ -296,7 +293,7 @@ class UserSearchInfoSerializer(serializers.ModelSerializer):
         fields = (
             'username',
             'user_id',
-            # 'profile_img',
+            'profile_img',
             'bio',
             'tweets_num',
             'following',
