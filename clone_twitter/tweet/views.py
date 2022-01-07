@@ -3,11 +3,13 @@ from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import permissions, viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tweet.models import Tweet, Retweet, UserLike
-from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, LikeSerializer, HomeSerializer, QuoteSerializer
+from tweet.serializers import TweetWriteSerializer, ReplySerializer, RetweetSerializer, TweetDetailSerializer, \
+    LikeSerializer, HomeSerializer, UserListSerializer, custom_paginator, TweetSerializer, QuoteSerializer
 
 
 class TweetPostView(APIView):      # write tweet
@@ -192,3 +194,70 @@ class HomeView(APIView):        # home
         me = request.user
         serializer = HomeSerializer(me, context={'request': request})
         return Response(serializer.data)
+
+
+class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # GET /api/v1/tweet/{lookup}/retweets/
+    @action(detail=True, methods=['GET'])
+    def retweets(self, request, pk):
+        tweet = get_object_or_404(Tweet, pk=pk)
+
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+
+        retweets = tweet.retweeted_by.all()
+        retweeting_user_list = [x.user for x in retweets]
+        retweeting_users, previous_page, next_page = custom_paginator(retweeting_user_list, 20, request)
+        serializer = UserListSerializer(retweeting_users, many=True, context={'request': request})
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return Response(data, status=status.HTTP_200_OK)
+
+    # GET /api/v1/follow_list/{lookup}/following/
+    @action(detail=True, methods=['GET'])
+    def quotes(self, request, pk=None):
+        tweet = get_object_or_404(Tweet, pk=pk)
+
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+
+        quotes = tweet.quoted_by.all()
+        tweet_list = [x.quoting for x in quotes]
+        tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
+        serializer = TweetSerializer(tweets, many=True, context={'request': request})
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return Response(data=data, status=status.HTTP_200_OK)
+
+    # GET /api/v1/tweet/{lookup}/likes/
+    @action(detail=True, methods=['GET'])
+    def likes(self, request, pk):
+        tweet = get_object_or_404(Tweet, pk=pk)
+
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+
+        userlikes = tweet.liked_by.all()
+        liking_user_list = [x.user for x in userlikes]
+        liking_users, previous_page, next_page = custom_paginator(liking_user_list, 20, request)
+        serializer = UserListSerializer(liking_users, many=True, context={'request': request})
+        data = serializer.data
+
+        pagination_info = dict()
+        pagination_info['previous'] = previous_page
+        pagination_info['next'] = next_page
+
+        data.append(pagination_info)
+        return Response(serializer.data, status=status.HTTP_200_OK)
