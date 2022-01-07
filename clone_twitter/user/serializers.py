@@ -122,7 +122,7 @@ class FollowSerializer(serializers.Serializer):
         follow_relation = Follow.objects.create(follower=follower, following=following)
         return follow_relation
 
-class UserFollowSerializer(serializers.ModelSerializer):    #TODO: merge following serializer
+class UserFollowSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='follower.id')
     username = serializers.CharField(source='follower.username')
     user_id = serializers.CharField(source='follower.user_id')
@@ -155,7 +155,7 @@ class UserFollowSerializer(serializers.ModelSerializer):    #TODO: merge followi
         return i_follow == 1
 
 
-class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
+class UserFollowingSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='following.id')
     username = serializers.CharField(source='following.username')
     user_id = serializers.CharField(source='following.user_id')
@@ -251,7 +251,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
         )
 
     def get_tweets(self, obj):
-        tweets = obj.tweets.all()
+        tweets = obj.tweets.all().order_by('-written_at')
         serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
         return serialized_tweets.data
 
