@@ -221,6 +221,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     header_img = serializers.ImageField(allow_null=True)
     bio = serializers.CharField(allow_blank=True)
     birth_date =serializers.DateField(allow_null=True)
+    i_follow = serializers.SerializerMethodField()
 
     profile_img = serializers.SerializerMethodField()
 
@@ -231,8 +232,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_img',
             'header_img',
             'bio',
-            'birth_date'
+            'birth_date',
+            'i_follow',
         )
+
+    def get_i_follow(self, user):
+        me = self.context['request'].user
+        i_follow = user.following.filter(follower=me).count()
+        return i_follow == 1
 
     def get_profile_img(self, obj):
         try:
@@ -241,6 +248,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return ProfileMedia.default_profile_img
         return profile_img.media.url if profile_img.media else profile_img.image_url
 
+      
 class UserInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
     user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])
