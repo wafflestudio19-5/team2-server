@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from tweet.views import TweetPostView, ReplyView, RetweetView, TweetDetailView, LikeView, HomeView, RetweetCancelView, UnlikeView, ThreadViewSet, QuoteView
+
+from tweet.views import TweetPostView, ReplyView, RetweetView, TweetDetailView, LikeView, HomeView, RetweetCancelView, UnlikeView, ThreadViewSet, QuoteView, TweetSearchViewSet
 
 router = SimpleRouter()
 router.register('tweet', ThreadViewSet, basename='thread')                          # /api/v1/tweet/
