@@ -1,6 +1,6 @@
 import json
 import rest_framework.pagination
-from clone_twitter.tweet.serializers import custom_paginator
+from tweet.serializers import custom_paginator
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
