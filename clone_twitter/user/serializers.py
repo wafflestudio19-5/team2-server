@@ -144,7 +144,9 @@ class UserFollowSerializer(serializers.ModelSerializer):    #TODO: merge followi
         )
 
     def get_follows_me(self, follow):
-        return True  # since this is follower list..
+        me = self.context['request'].user
+        follows_me = Follow.objects.filter(Q(follower=follow.follower) & Q(following=me)).exists()
+        return follows_me
 
     def get_i_follow(self, follow):
         me = self.context['request'].user
@@ -160,6 +162,7 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
     bio = serializers.CharField(source='following.bio')
     profile_img = serializers.ImageField(source='following.profile_img')
     follows_me = serializers.SerializerMethodField()
+    i_follow = serializers.SerializerMethodField()
 
     class Meta:
         model = Follow
@@ -170,12 +173,19 @@ class UserFollowingSerializer(serializers.ModelSerializer):  #TODO merge
             'bio',
             'follows_me',
             'profile_img',
+            'i_follow'
         )
 
     def get_follows_me(self, follow):
         me = self.context['request'].user
         follows_me = Follow.objects.filter(Q(follower=follow.following) & Q(following=me)).exists()
         return follows_me
+
+    def get_i_follow(self, follow):
+        me = self.context['request'].user
+        user = follow.following
+        i_follow = user.following.filter(follower=me).count()
+        return i_follow == 1
 
 
 class UserRecommendSerializer(serializers.ModelSerializer):
