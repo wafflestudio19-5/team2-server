@@ -255,6 +255,7 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
 
 class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
+    queryset = Tweet.objects.all()
 
     # GET /api/v1/tweet/{lookup}/retweets/
     @action(detail=True, methods=['GET'])
