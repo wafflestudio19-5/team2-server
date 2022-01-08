@@ -200,7 +200,7 @@ class UserInfoViewSet(viewsets.GenericViewSet):
     def id(self, request):
         user = request.user
 
-        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer = self.get_serializer(user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid(raise_exception=True):
             serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)

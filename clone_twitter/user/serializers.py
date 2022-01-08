@@ -264,6 +264,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
     bio = serializers.CharField(allow_blank=True)
     created_at = serializers.DateTimeField()
     birth_date = serializers.DateField(allow_null=True)
+    i_follow = serializers.SerializerMethodField()
     
     profile_img = serializers.SerializerMethodField()
     tweets = serializers.SerializerMethodField()
@@ -316,6 +317,11 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
     def get_follower(self, obj):
         return obj.following.all().count()
+
+    def get_i_follow(self, obj):
+        me = self.context['request'].user
+        i_follow = obj.following.filter(follower=me).count()
+        return i_follow == 1
 
     # at least 4, at most 15 letters
     # only letters, digits, underscore(_) are allowed
