@@ -285,7 +285,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'tweets',
             'tweets_num',
             'following',
-            'follower'
+            'follower',
+            'i_follow',
         )
 
     def get_profile_img(self, obj):
