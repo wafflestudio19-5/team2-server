@@ -398,6 +398,9 @@ class LikeSerializer(serializers.Serializer):
         except Tweet.DoesNotExist:
             return False
 
+        if liked.tweet_type == 'RETWEET':
+            liked = liked.retweeting.all()[0].retweeted
+
         me = self.context['request'].user
         user_like = UserLike.objects.create(user=me, liked=liked)
 
