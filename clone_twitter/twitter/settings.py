@@ -42,7 +42,7 @@ SECRET_KEY = get_secret("SECRET_KEY")
 FRONT_URL = get_secret("FRONT_URL")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
 ALLOWED_HOSTS = ['127.0.0.1', '15.165.77.144', 'localhost']
@@ -120,7 +120,6 @@ DATABASES = {
         'NAME': 'twitter_backend',
         'USER': 'twitter-backend',
         'PASSWORD': DB_PASSWORD,
-        # 'PASSWORD' : '00000000',
         'TEST': {
             'NAME': 'test_twitter_backend',
         }
