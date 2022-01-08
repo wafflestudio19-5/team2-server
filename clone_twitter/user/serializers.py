@@ -205,6 +205,8 @@ class UserFollowingSerializer(serializers.ModelSerializer):
 
 
 class UserRecommendSerializer(serializers.ModelSerializer):
+    profile_img = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -215,6 +217,12 @@ class UserRecommendSerializer(serializers.ModelSerializer):
             # Q. id ?
         ]
 
+    def get_profile_img(self, obj):
+        try:
+            profile_img = obj.profile_img.get()
+        except ProfileMedia.DoesNotExist:
+            return ProfileMedia.default_profile_img
+        return profile_img.media.url if profile_img.media else profile_img.image_url
           
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField()
