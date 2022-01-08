@@ -122,6 +122,9 @@ class RetweetCancelView(APIView):     # cancel retweet
         me = request.user
         source_tweet = get_object_or_404(Tweet, pk=pk)
 
+        if source_tweet.tweet_type == 'RETWEET':
+            source_tweet = source_tweet.retweeting.all()[0].retweeted
+
         try:
             retweeting = source_tweet.retweeted_by.get(user=me).retweeting
         except Retweet.DoesNotExist:
