@@ -256,12 +256,12 @@ LOGGING = {
         # added for saving log files
         'file': {
             'level': 'DEBUG',
-            'filters': ['require_debug_true'],  # later change to debug_false (only for server)
+            'filters': ['require_debug_false'],  # later change to debug_false (only for server)
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'django.server',
             'encoding': 'UTF-8',
             'filename': os.path.join(BASE_DIR, 'logging/clonetwitter.log'),
-            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'maxBytes': 1024 * 1024 * 100,  # 100 MB
             'backupCount': 5,
         },
     },
