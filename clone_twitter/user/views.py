@@ -1,6 +1,6 @@
 import json
 import rest_framework.pagination
-from tweet.serializers import custom_paginator
+
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -18,6 +18,7 @@ from django.db.models import Q, Count
 from user.models import Follow, User, SocialAccount, ProfileMedia
 import requests
 from twitter.settings import get_secret, FRONT_URL
+from user.paginations import UserListPagination
 # Create your views here.
 
 class PingPongView(APIView):
@@ -150,7 +151,7 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Follow.objects.all()
     serializer_class = UserFollowSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    pagination_class = user.paginations.FollowListPagination
+    pagination_class = user.paginations.UserListPagination
 
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
@@ -393,10 +394,10 @@ class FollowRecommendView(APIView):  # recommend random ? users who I don't foll
         serializer = UserRecommendSerializer(recommending_users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class SearchPeopleView(APIView):
+class SearchPeopleView(APIView, UserListPagination):
     queryset = User.objects.all()
     permission_classes = (permissions.IsAuthenticated,)
-    
+
     # GET /api/v1/search/people/
     # include 
     def get(self, request):
@@ -410,14 +411,11 @@ class SearchPeopleView(APIView):
             .filter(num_keywords_included__gte=1) \
             .order_by('-num_keywords_in_username', '-num_keywords_included', '-num_followers')
 
-        people_list = [x for x in sorted_queryset]
-        people, previous_page, next_page = custom_paginator(people_list, 20, request)
-        serializer = UserSearchInfoSerializer(people, many=True, context={'request': request})
-        data = serializer.data
+        page = self.paginate_queryset(sorted_queryset)
 
-        pagination_info = dict()
-        pagination_info['previous'] = previous_page
-        pagination_info['next'] = next_page
+        if page is not None:
+            serializer = UserInfoSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
 
-        data.append(pagination_info)
-        return Response(data, status=status.HTTP_200_OK)
+        serializer = UserInfoSerializer(sorted_queryset, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
