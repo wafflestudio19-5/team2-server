@@ -221,7 +221,7 @@ class UserInfoViewSet(viewsets.GenericViewSet):
     def patch_profile(self, request):
         user = request.user
 
-        serializer = UserProfileSerializer(user, data=request.data, partial=True)
+        serializer = UserProfileSerializer(user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid(raise_exception=True):
             serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
