@@ -138,25 +138,35 @@ class TweetSerializer(serializers.ModelSerializer):
         return serializer.data
 
     def get_replies(self, tweet):
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
         return tweet.replied_by.all().count()
 
     def get_retweets(self, tweet):
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
         return tweet.retweeted_by.all().count() + tweet.quoted_by.all().count()
 
     def get_user_retweet(self, tweet):
         me = self.context['request'].user
         if me.is_anonymous:
             return False
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
         user_retweet = tweet.retweeted_by.filter(user=me).count()
         return user_retweet == 1
 
     def get_likes(self, tweet):
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
         return tweet.liked_by.all().count()
 
     def get_user_like(self, tweet):
         me = self.context['request'].user
         if me.is_anonymous:
             return False
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
         user_like = tweet.liked_by.filter(user=me).count()
         return user_like == 1
 
@@ -272,6 +282,9 @@ class ReplySerializer(serializers.Serializer):
         except Tweet.DoesNotExist:
             return False
 
+        if replied.tweet_type == 'RETWEET':
+            replied = replied.retweeting.all()[0].retweeted
+
         tweet_type = 'REPLY'
         author = self.context['request'].user
         reply_to = replied.author.user_id
@@ -314,6 +327,9 @@ class RetweetSerializer(serializers.Serializer):
         except Tweet.DoesNotExist:
             return False
 
+        if retweeted.tweet_type == 'RETWEET':
+            retweeted = retweeted.retweeting.all()[0].retweeted
+
         me = self.context['request'].user
         tweet_type = 'RETWEET'
         author = retweeted.author
@@ -353,6 +369,9 @@ class QuoteSerializer(serializers.Serializer):
             quoted = Tweet.objects.get(id=tweet_id)
         except Tweet.DoesNotExist:
             return False
+
+        if quoted.tweet_type == 'RETWEET':
+            quoted = quoted.retweeting.all()[0].retweeted
 
         tweet_type = 'GENERAL'
         author = self.context['request'].user
