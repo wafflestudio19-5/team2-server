@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 import re
+from tweet.models import Retweet, Tweet
 from tweet.serializers import TweetSerializer, custom_paginator
 from user.models import Follow, ProfileMedia
 from django.db.models import Q
@@ -266,7 +267,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
     birth_date = serializers.DateField(allow_null=True)
     
     profile_img = serializers.SerializerMethodField()
-    tweets = serializers.SerializerMethodField()
+    tweets_written = serializers.SerializerMethodField()
+    tweets_retweeted = serializers.SerializerMethodField()
     tweets_num = serializers.SerializerMethodField()
     following = serializers.SerializerMethodField()
     follower = serializers.SerializerMethodField()
@@ -281,7 +283,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'bio',
             'created_at',
             'birth_date',
-            'tweets',
+            'tweets_written',
+            'tweets_retweeted',
             'tweets_num',
             'following',
             'follower'
@@ -294,8 +297,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
             return ProfileMedia.default_profile_img
         return profile_img.media.url if profile_img.media else profile_img.image_url
 
-    def get_tweets(self, obj):
-        tweet_list = obj.tweets.all().order_by('-created_at')
+    def get_tweets(self, queryset):
+        tweet_list = queryset.order_by('-created_at')
         request = self.context['request']
         tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
@@ -307,6 +310,14 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
         data.append(pagination_info)
         return data
+
+    # tweets written, replied, or quoted by me
+    def get_tweets_written(self, obj):
+        return self.get_tweets(obj.tweets.exclude(tweet_type='RETWEET').order_by('-created_at')) 
+
+    # tweets retweeted by me
+    def get_tweets_retweeted(self, obj):
+        return self.get_tweets(Tweet.objects.filter(tweet_type='RETWEET', retweeting_user=obj.user_id).order_by('-created_at'))
 
     def get_tweets_num(self, obj):
         return obj.tweets.all().count()
