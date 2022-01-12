@@ -323,7 +323,6 @@ class GetFollowListTestCase(TestCase):
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        #print(response.json())
 
     def test_get_following_success(self):
         response = self.client.get(
@@ -332,7 +331,6 @@ class GetFollowListTestCase(TestCase):
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        #print(response.json())
 
 class GetRecommendTestCase(TestCase):
 
@@ -705,8 +703,6 @@ class GetUserTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         data = response.json()
-        print(data['tweets_written'])
-        print(data['tweets_retweeted'])
 
         self.assertEqual(data['username'], self.static_response_user2['username'])
         self.assertEqual(data['user_id'], self.static_response_user2['user_id'])
@@ -885,9 +881,5 @@ class GetSearchPeopleTestCase(TestCase):
             HTTP_AUTHORIZATION=self.tokens[0])
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # for k in response.json():
-        #    print(k)
-        # print(list(map(lambda x:x['user_id'], response.json())))
         self.assertEqual(list(map(lambda x:x['user_id'], response.json())),
         ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'test1'])
