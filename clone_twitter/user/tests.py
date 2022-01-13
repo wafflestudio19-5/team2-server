@@ -850,9 +850,9 @@ class GetSearchPeopleTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        user_id_list = ['test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8ee', 'test9']
-        username_list = ['f', 'f', 'f', 'aa', 'aabb', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc']
-        bio_list = ['', 'aa', 'aabbcc', 'mol', '?', 'ru', '', 'aaccdd', 'aa', 'aabbccddee']
+        user_id_list = ['test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8ee', 'test9', 'kk', 'tt']
+        username_list = ['f', 'aa', 'f', 'aa', 'aabb', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc', 'ee', 'gg']
+        bio_list = ['', '', 'aabbcc', 'mol', '?', 'ru', '', 'aaccdd', 'aa', 'aabbccddee', '', '']
         follow_relation = [(0,8), (1,8), (0,6)]
         
         cls.users = [
@@ -881,5 +881,17 @@ class GetSearchPeopleTestCase(TestCase):
             HTTP_AUTHORIZATION=self.tokens[0])
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list(map(lambda x:x['user_id'], response.json())),
-        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'test1'])
+        self.assertEqual(list(map(lambda x:x['user_id'], response.json()['results'])),
+        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'kk', 'test1'])
+
+    # Several Keywords with those including @ sign
+    def test_get_search_people_with_atsign(self):
+        response = self.client.get(                            
+            '/api/v1/search/people/',
+            {'query': 'bb cc  aa dd @kk @tt ee'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.tokens[0])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list(map(lambda x:x['user_id'], response.json()['results'])),
+        ['kk', 'tt', 'test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'test1'])
