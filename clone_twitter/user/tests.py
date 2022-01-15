@@ -610,32 +610,32 @@ class GetUserTestCase(TestCase):
         cls.tweet1 = TweetFactory(
             tweet_type = 'GENERAL',
             author = cls.user1,
-            content = 'content'
+            content = 'content1'
         )
 
         cls.tweet2 = TweetFactory(
             tweet_type = 'GENERAL',
             author = cls.user1,
-            content = 'content'
+            content = 'content2'
         )
 
         cls.tweet3 = TweetFactory(
             tweet_type = 'GENERAL',
             author = cls.user3,
-            content = 'content'
+            content = 'content3'
         )
 
         cls.tweet4 = TweetFactory(
             tweet_type = 'RETWEET',
             author = cls.user3,
-            retweeting_user = 'user2_id',
-            content = 'content'
+            retweeting_user = 'user1_id',
+            content = 'content3'
         )
 
         cls.retweet = RetweetFactory(
             retweeted = cls.tweet3,
             retweeting = cls.tweet4,
-            user = cls.user2
+            user = cls.user1
         )
         
         cls.static_response_user1 = {
@@ -643,9 +643,8 @@ class GetUserTestCase(TestCase):
             'user_id': 'user1_id',
             'bio': 'I am User 1.',
             'birth_date': '2002-11-15',
-            'tweets_written': 2,
-            'tweets_retweeted': 0,
-            'tweets_num': 2,
+            'tweets': ['content3', 'content2', 'content1'],
+            'tweets_num': 3,
             'following': 2,
             'follower': 0
         }
@@ -655,8 +654,7 @@ class GetUserTestCase(TestCase):
             'user_id': 'user2_id',
             'bio': '',
             'birth_date': None,
-            'tweets_written': 0,
-            'tweets_retweeted': 1,
+            'tweets': [],
             'tweets_num': 0,
             'following': 0,
             'follower': 1
@@ -688,8 +686,7 @@ class GetUserTestCase(TestCase):
         self.assertEqual(data['bio'], self.static_response_user1['bio'])
         self.assertIn("created_at", data)
         self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
-        self.assertEqual(len(data['tweets_written'])-1, self.static_response_user1['tweets_written'])
-        self.assertEqual(len(data['tweets_retweeted'])-1, self.static_response_user1['tweets_retweeted'])
+        self.assertEqual(list(map(lambda x: x['content'], data['tweets'][:-1])), self.static_response_user1['tweets'])
         self.assertEqual(data['tweets_num'], self.static_response_user1['tweets_num'])
         self.assertEqual(data['following'], self.static_response_user1['following'])
         self.assertEqual(data['follower'], self.static_response_user1['follower'])
@@ -709,8 +706,7 @@ class GetUserTestCase(TestCase):
         self.assertEqual(data['bio'], self.static_response_user2['bio'])
         self.assertIn("created_at", data)
         self.assertEqual(data['birth_date'], self.static_response_user2['birth_date'])
-        self.assertEqual(len(data['tweets_written'])-1, self.static_response_user2['tweets_written'])
-        self.assertEqual(len(data['tweets_retweeted'])-1, self.static_response_user2['tweets_retweeted'])
+        self.assertEqual(list(map(lambda x: x['content'], data['tweets'][:-1])), self.static_response_user2['tweets'])
         self.assertEqual(data['tweets_num'], self.static_response_user2['tweets_num'])
         self.assertEqual(data['following'], self.static_response_user2['following'])
         self.assertEqual(data['follower'], self.static_response_user2['follower'])
@@ -729,8 +725,7 @@ class GetUserTestCase(TestCase):
         self.assertEqual(data['bio'], self.static_response_user1['bio'])
         self.assertIn("created_at", data)
         self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
-        self.assertEqual(len(data['tweets_written'])-1, self.static_response_user1['tweets_written'])
-        self.assertEqual(len(data['tweets_retweeted'])-1, self.static_response_user1['tweets_retweeted'])
+        self.assertEqual(list(map(lambda x: x['content'], data['tweets'][:-1])), self.static_response_user1['tweets'])
         self.assertEqual(data['tweets_num'], self.static_response_user1['tweets_num'])
         self.assertEqual(data['following'], self.static_response_user1['following'])
         self.assertEqual(data['follower'], self.static_response_user1['follower'])
@@ -755,6 +750,7 @@ class PatchUserIDTestCase(TestCase):
             'user_id': 'user1',
             'bio': 'I am User 1.',
             'birth_date': '2002-11-15',
+            'tweets': [],
             'tweets_num': 0,
             'following': 0,
             'follower': 0
@@ -765,6 +761,7 @@ class PatchUserIDTestCase(TestCase):
             'user_id': 'user2_ID',
             'bio': 'I am User 1.',
             'birth_date': '2002-11-15',
+            'tweets': [],
             'tweets_num': 0,
             'following': 0,
             'follower': 0

@@ -267,8 +267,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
     birth_date = serializers.DateField(allow_null=True)
     
     profile_img = serializers.SerializerMethodField()
-    tweets_written = serializers.SerializerMethodField()
-    tweets_retweeted = serializers.SerializerMethodField()
+    tweets = serializers.SerializerMethodField()
     tweets_num = serializers.SerializerMethodField()
     following = serializers.SerializerMethodField()
     follower = serializers.SerializerMethodField()
@@ -283,8 +282,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'bio',
             'created_at',
             'birth_date',
-            'tweets_written',
-            'tweets_retweeted',
+            'tweets',
             'tweets_num',
             'following',
             'follower'
@@ -297,10 +295,15 @@ class UserInfoSerializer(serializers.ModelSerializer):
             return ProfileMedia.default_profile_img
         return profile_img.media.url if profile_img.media else profile_img.image_url
 
-    def get_tweets(self, queryset):
-        tweet_list = queryset.order_by('-created_at')
+    def get_tweets(self, obj):
+        q = Q()
+        q |= (Q(author=obj) & ~Q(tweet_type='RETWEET'))                    # tweets written(or replied, quoted) by the user
+        q |= (Q(retweeting_user=obj.user_id) & Q(tweet_type='RETWEET'))    # tweets retweeted by the user
+
+        tweets = Tweet.objects.filter(q).order_by('-created_at')
+
         request = self.context['request']
-        tweets, previous_page, next_page = custom_paginator(tweet_list, 10, request)
+        tweets, previous_page, next_page = custom_paginator(tweets, 10, request)
         serializer = TweetSerializer(tweets, many=True, context={'request': request})
         data = serializer.data
 
@@ -311,16 +314,13 @@ class UserInfoSerializer(serializers.ModelSerializer):
         data.append(pagination_info)
         return data
 
-    # tweets written, replied, or quoted by me
-    def get_tweets_written(self, obj):
-        return self.get_tweets(obj.tweets.exclude(tweet_type='RETWEET').order_by('-created_at')) 
-
-    # tweets retweeted by me
-    def get_tweets_retweeted(self, obj):
-        return self.get_tweets(Tweet.objects.filter(tweet_type='RETWEET', retweeting_user=obj.user_id).order_by('-created_at'))
 
     def get_tweets_num(self, obj):
-        return obj.tweets.all().count()
+        q = Q()
+        q |= (Q(author=obj) & ~Q(tweet_type='RETWEET'))                    # tweets written(or replied, quoted) by the user
+        q |= (Q(retweeting_user=obj.user_id) & Q(tweet_type='RETWEET'))    # tweets retweeted by the user
+
+        return Tweet.objects.filter(q).count()
 
     def get_following(self, obj):
         return obj.follower.all().count()
@@ -373,11 +373,6 @@ class UserSearchInfoSerializer(serializers.ModelSerializer):
         except ProfileMedia.DoesNotExist:
             return ProfileMedia.default_profile_img
         return profile_img.media.url if profile_img.media else profile_img.image_url
-    
-    def get_tweets(self, obj):
-        tweets = obj.tweets.all()
-        serialized_tweets = TweetSerializer(tweets, read_only=True, many=True, context={'request': self.context['request']})
-        return serialized_tweets.data
 
     def get_tweets_num(self, obj):
         return obj.tweets.all().count()
