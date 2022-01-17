@@ -957,10 +957,10 @@ class GetSearchTweetTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        print(list(map(lambda x:x['author']['user_id'], response.json())))
-        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json())),
+        # print(list(map(lambda x:x['author']['user_id'], response.json())))
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json()['results'])),
         ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2'])
-        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json())),
+        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json()['results'])),
         ['GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])
 
     def test_get_search_latest(self):
@@ -972,10 +972,10 @@ class GetSearchTweetTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        print(list(map(lambda x:x['author']['user_id'], response.json())))
-        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json())),
+        # print(list(map(lambda x:x['author']['user_id'], response.json())))
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json()['results'])),
         ['test9', 'test6', 'test3', 'test7', 'test4', 'test8ee', 'test3', 'test3', 'test4', 'test5', 'test2', 'test1'])
-        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json())),
+        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json()['results'])),
         ['GENERAL', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])
 
 class QuoteTestCase(TestCase):

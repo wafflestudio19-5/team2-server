@@ -3,7 +3,8 @@ from django.db.models import query
 from django.test import TestCase
 
 from factory.django import DjangoModelFactory
-from tweet.models import Tweet
+from tweet.serializers import TweetDetailSerializer
+from tweet.models import Retweet, Tweet
 
 from user.models import User, Follow
 from django.test import TestCase
@@ -34,6 +35,16 @@ class TweetFactory(DjangoModelFactory):
         tweet = Tweet.objects.create(**kwargs)
         tweet.save()
         return tweet
+
+class RetweetFactory(DjangoModelFactory):
+    class Meta:
+        model = Retweet
+
+    @classmethod
+    def create(cls, **kwargs):
+        retweet = Retweet.objects.create(**kwargs)
+        retweet.save()
+        return retweet
 
 # Create your tests here.
 class PostUserTestCase(TestCase):
@@ -312,7 +323,6 @@ class GetFollowListTestCase(TestCase):
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        #print(response.json())
 
     def test_get_following_success(self):
         response = self.client.get(
@@ -321,7 +331,6 @@ class GetFollowListTestCase(TestCase):
             content_type='application/json',
             HTTP_AUTHORIZATION=self.user1_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        #print(response.json())
 
 class GetRecommendTestCase(TestCase):
 
@@ -601,23 +610,43 @@ class GetUserTestCase(TestCase):
         cls.tweet1 = TweetFactory(
             tweet_type = 'GENERAL',
             author = cls.user1,
-            content = 'content'
+            content = 'content1'
         )
 
         cls.tweet2 = TweetFactory(
             tweet_type = 'GENERAL',
             author = cls.user1,
-            content = 'content'
+            content = 'content2'
         )
 
+        cls.tweet3 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user3,
+            content = 'content3'
+        )
+
+        cls.tweet4 = TweetFactory(
+            tweet_type = 'RETWEET',
+            author = cls.user3,
+            retweeting_user = 'user1_id',
+            content = 'content3'
+        )
+
+        cls.retweet = RetweetFactory(
+            retweeted = cls.tweet3,
+            retweeting = cls.tweet4,
+            user = cls.user1
+        )
+        
         cls.static_response_user1 = {
             'username' : 'username',
             'user_id': 'user1_id',
             'bio': 'I am User 1.',
             'birth_date': '2002-11-15',
-            'tweets_num': 2,
-            'following': 0,
-            'follower': 2
+            'tweets': ['content3', 'content2', 'content1'],
+            'tweets_num': 3,
+            'following': 2,
+            'follower': 0
         }
 
         cls.static_response_user2 = {
@@ -625,9 +654,10 @@ class GetUserTestCase(TestCase):
             'user_id': 'user2_id',
             'bio': '',
             'birth_date': None,
+            'tweets': [],
             'tweets_num': 0,
-            'following': 1,
-            'follower': 0
+            'following': 0,
+            'follower': 1
         }
 
         Follow.objects.create(follower=cls.user1, following=cls.user2)
@@ -650,11 +680,13 @@ class GetUserTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         data = response.json()
+
         self.assertEqual(data['username'], self.static_response_user1['username'])
         self.assertEqual(data['user_id'], self.static_response_user1['user_id'])
         self.assertEqual(data['bio'], self.static_response_user1['bio'])
         self.assertIn("created_at", data)
         self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
+        self.assertEqual(list(map(lambda x: x['content'], data['tweets'][:-1])), self.static_response_user1['tweets'])
         self.assertEqual(data['tweets_num'], self.static_response_user1['tweets_num'])
         self.assertEqual(data['following'], self.static_response_user1['following'])
         self.assertEqual(data['follower'], self.static_response_user1['follower'])
@@ -668,11 +700,13 @@ class GetUserTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         data = response.json()
+
         self.assertEqual(data['username'], self.static_response_user2['username'])
         self.assertEqual(data['user_id'], self.static_response_user2['user_id'])
         self.assertEqual(data['bio'], self.static_response_user2['bio'])
         self.assertIn("created_at", data)
         self.assertEqual(data['birth_date'], self.static_response_user2['birth_date'])
+        self.assertEqual(list(map(lambda x: x['content'], data['tweets'][:-1])), self.static_response_user2['tweets'])
         self.assertEqual(data['tweets_num'], self.static_response_user2['tweets_num'])
         self.assertEqual(data['following'], self.static_response_user2['following'])
         self.assertEqual(data['follower'], self.static_response_user2['follower'])
@@ -691,6 +725,7 @@ class GetUserTestCase(TestCase):
         self.assertEqual(data['bio'], self.static_response_user1['bio'])
         self.assertIn("created_at", data)
         self.assertEqual(data['birth_date'], self.static_response_user1['birth_date'])
+        self.assertEqual(list(map(lambda x: x['content'], data['tweets'][:-1])), self.static_response_user1['tweets'])
         self.assertEqual(data['tweets_num'], self.static_response_user1['tweets_num'])
         self.assertEqual(data['following'], self.static_response_user1['following'])
         self.assertEqual(data['follower'], self.static_response_user1['follower'])
@@ -715,6 +750,7 @@ class PatchUserIDTestCase(TestCase):
             'user_id': 'user1',
             'bio': 'I am User 1.',
             'birth_date': '2002-11-15',
+            'tweets': [],
             'tweets_num': 0,
             'following': 0,
             'follower': 0
@@ -725,6 +761,7 @@ class PatchUserIDTestCase(TestCase):
             'user_id': 'user2_ID',
             'bio': 'I am User 1.',
             'birth_date': '2002-11-15',
+            'tweets': [],
             'tweets_num': 0,
             'following': 0,
             'follower': 0
@@ -810,9 +847,9 @@ class GetSearchPeopleTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        user_id_list = ['test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8ee', 'test9']
-        username_list = ['f', 'f', 'f', 'aa', 'aabb', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc']
-        bio_list = ['', 'aa', 'aabbcc', 'mol', '?', 'ru', '', 'aaccdd', 'aa', 'aabbccddee']
+        user_id_list = ['test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8ee', 'test9', 'kk', 'tt']
+        username_list = ['f', 'aa', 'f', 'aa', 'aabb', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc', 'aabbcc', 'ee', 'gg']
+        bio_list = ['', '', 'aabbcc', 'mol', '?', 'ru', '', 'aaccdd', 'aa', 'aabbccddee', '', '']
         follow_relation = [(0,8), (1,8), (0,6)]
         
         cls.users = [
@@ -841,9 +878,17 @@ class GetSearchPeopleTestCase(TestCase):
             HTTP_AUTHORIZATION=self.tokens[0])
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # for k in response.json():
-        #    print(k)
-        # print(list(map(lambda x:x['user_id'], response.json())))
-        self.assertEqual(list(map(lambda x:x['user_id'], response.json())),
-        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'test1'])
+        self.assertEqual(list(map(lambda x:x['user_id'], response.json()['results'])),
+        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'kk', 'test1'])
+
+    # Several Keywords with those including @ sign
+    def test_get_search_people_with_atsign(self):
+        response = self.client.get(                            
+            '/api/v1/search/people/',
+            {'query': 'bb cc  aa dd @kk @tt ee'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.tokens[0])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list(map(lambda x:x['user_id'], response.json()['results'])),
+        ['kk', 'tt', 'test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'test1'])

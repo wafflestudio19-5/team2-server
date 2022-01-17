@@ -1,4 +1,6 @@
 import json
+from multiprocessing.sharedctypes import Value
+from django.test import tag
 import rest_framework.pagination
 
 import user.paginations
@@ -403,15 +405,26 @@ class SearchPeopleView(APIView, UserListPagination):
     def get(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = request.query_params['query'].split()
+        search_keywords = request.query_params['query'].split() 
+        tag_keywords = ['']
+        
+
+        for k in range(len(search_keywords)):
+            if search_keywords[k][0] == '@':
+                search_keywords[k] = search_keywords[k][1:]
+                tag_keywords.append(search_keywords[k])
+
 
         sorted_queryset = \
             User.objects.all() \
-            .annotate(num_keywords_included=sum([Case(When(Q(username__icontains=keyword) | Q(user_id__icontains=keyword) | Q(bio__icontains=keyword), then=1), default=0) for keyword in search_keywords]), num_keywords_in_username=sum([Case(When(Q(username__icontains=keyword), then=1), default=0) for keyword in search_keywords]), num_followers=Count('following')) \
+            .annotate(num_keywords_included=sum([Case(When(Q(username__icontains=keyword) | Q(user_id__icontains=keyword) | Q(bio__icontains=keyword), then=1), default=0) for keyword in search_keywords]),
+                num_keywords_in_username=sum([Case(When(Q(username__icontains=keyword), then=1), default=0) for keyword in search_keywords]),
+                is_tag_keyword=sum([Case(When(user_id=keyword, then=1), default=0) for keyword in tag_keywords]),
+                num_followers=Count('following')) \
             .filter(num_keywords_included__gte=1) \
-            .order_by('-num_keywords_in_username', '-num_keywords_included', '-num_followers')
+            .order_by('-is_tag_keyword', '-num_keywords_in_username', '-num_keywords_included', '-num_followers')
 
-        page = self.paginate_queryset(sorted_queryset)
+        page = self.paginate_queryset(sorted_queryset, request)
 
         if page is not None:
             serializer = UserInfoSerializer(page, many=True, context={'request': request})
