@@ -360,6 +360,88 @@ class KakaoUnlinkView(APIView): # deactivate
         me.delete()
         return Response({'success':True, 'user_id':unlinked_user_id}, status=status.HTTP_200_OK)
 
+# Social Login : Google
+GOOGLE_CLIENT_ID = get_secret("GOOGLE_CLIENT_ID")
+GOOGLE_CALLBACK_URI = get_secret("GOOGLE_CALLBACK")
+GOOGLE_SECRET = get_secret("GOOGLE_SECRET")
+
+class GoogleSignInView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+        scope = "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+        client_id = GOOGLE_CLIENT_ID
+        return redirect(
+            f"{google_auth_url}?client_id={client_id}&response_type=code&redirect_uri={GOOGLE_CALLBACK_URI}&scope={scope}")
+
+class GoogleCallbackView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        # 1. get token
+        client_id = GOOGLE_CLIENT_ID
+        client_secret = GOOGLE_SECRET
+        code = request.GET.get('code')
+
+        token_res = requests.post(
+            f"https://oauth2.googleapis.com/token?client_id={client_id}&client_secret={client_secret}&code={code}"
+            + f"&grant_type=authorization_code&redirect_uri={GOOGLE_CALLBACK_URI}").json()  #state?
+        error = token_res.get("error")
+        if error is not None:
+            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get access_token"
+            response = redirect(url)
+            return response
+
+        access_token = token_res.get('access_token')
+
+        # get email, profile
+        user_info_response = requests.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={access_token}").json()
+
+        # TODO exception
+
+        google_id = user_info_response.get("id")
+        username = user_info_response.get("name")
+        email = user_info_response.get("email", None)
+        profile_img_url = user_info_response.get("picture")
+
+        # 3. connect kakao account - user
+        # case 1. user who has signed up with kakao account trying to login
+        google_account = SocialAccount.objects.filter(account_id=google_id)  #TODO add type = google
+        if google_account:
+            user = google_account.first().user
+            token = jwt_token_of(user)
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
+            response = redirect(url)
+            return response
+
+        # case 2. new user signup with kakao (might use profile info)
+        else:
+            random_id = unique_random_id_generator()
+
+            if email and User.objects.filter(email=email).exists():
+                url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=duplicate email"
+                response = redirect(url)
+                return response
+
+            user = User(user_id=random_id, email=email, username=username)
+            user.set_unusable_password()  # user signed up with kakao can only login via kakao login
+            user.save()
+            profile_media = ProfileMedia(image_url=profile_img_url)
+            profile_media.user = user
+            profile_media.save()
+
+            google_account = SocialAccount.objects.create(account_id=google_id, type='google', user=user)
+            token = jwt_token_of(user)
+            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
+            response = redirect(url)
+
+            return response
+
+
+
+
+
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
     queryset = User.objects.all().reverse()
     permission_classes = (permissions.IsAuthenticated,)
