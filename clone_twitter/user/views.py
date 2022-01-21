@@ -399,20 +399,20 @@ class GoogleCallbackView(APIView):
         user_info_response = requests.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={access_token}").json()
 
         # TODO exception
-
-        google_id = user_info_response.get("id")
+        google_id = user_info_response.get("sub")
         username = user_info_response.get("name")
         email = user_info_response.get("email", None)
         profile_img_url = user_info_response.get("picture")
 
         # 3. connect kakao account - user
-        # case 1. user who has signed up with kakao account trying to login
+        # case 1. user who has signed up with google account trying to login
         google_account = SocialAccount.objects.filter(account_id=google_id)  #TODO add type = google
         if google_account:
             user = google_account.first().user
             token = jwt_token_of(user)
             url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
+            # return Response(status=status.HTTP_200_OK, data="already")
             return response
 
         # case 2. new user signup with kakao (might use profile info)
@@ -435,7 +435,7 @@ class GoogleCallbackView(APIView):
             token = jwt_token_of(user)
             url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
-
+            # return Response(status=status.HTTP_200_OK, data="new")
             return response
 
 
