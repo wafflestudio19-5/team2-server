@@ -2,7 +2,6 @@ import json
 from multiprocessing.sharedctypes import Value
 import re
 from django.test import tag
-
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -21,6 +20,16 @@ from user.models import Follow, User, SocialAccount, ProfileMedia
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
+
+# for email
+from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.core.mail import EmailMessage
+from twitter.utils import account_activation_token, active_message
+from django.utils.encoding import force_bytes, force_text
+
 # Create your views here.
 
 class PingPongView(APIView):
@@ -517,3 +526,34 @@ class SearchPeopleView(APIView, UserListPagination):
 
         serializer = UserInfoSerializer(sorted_queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class SignupEmailSendView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        user = request.user
+        current_site = get_current_site(request)
+        domain = current_site.domain
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = account_activation_token.make_token(user)
+        message_data = active_message(domain, uidb64, token)
+        mail_title = "waffletwitter 가입을 위한 인증 이메일입니다."
+        mail_to = request.data["email"]
+        email = EmailMessage(mail_title, message_data, to=[mail_to])
+        email.send()
+
+class EmailActivateView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_text(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+            if user is not None and account_activation_token.check_token(user, token):
+                User.objects.filter(pk=uid).update(is_active=True)
+                return Response({"message": "email verification success"}, status=status.HTTP_200_OK)  # TODO Q front redirect?
+            return Response({"message": "AUTH_FAIL"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except KeyError:
+            return Response({"message": "KEY_ERROR"}, status=status.HTTP_400_BAD_REQUEST)
