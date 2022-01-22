@@ -14,3 +14,4 @@ django-storages
 Pillow
 factory-boy
 requests~=2.26.0
+six
