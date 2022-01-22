@@ -61,6 +61,8 @@ class Quote(models.Model):
 class UserLike(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
     liked = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='liked_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
 
     class Meta:
         constraints = [
