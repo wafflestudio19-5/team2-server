@@ -7,9 +7,9 @@ from django.utils.timezone import now
 
 from user.models import User
 
-def tweet_media_directory_path(instance, filename):
+def media_directory_path(instance, filename, usage='tweet'):
     filename_base, filename_ext = os.path.splitext(filename)
-    return 'tweet/'+now().strftime('%Y%m%d_%H%M%S')+'_'+str(randint(10000000,99999999))+filename_ext
+    return usage+'/'+now().strftime('%Y%m%d_%H%M%S')+'_'+str(randint(10000000,99999999))+filename_ext
 
 
 class Tweet(models.Model):
@@ -30,7 +30,7 @@ class Tweet(models.Model):
 
 
 class TweetMedia(models.Model):
-    media = models.FileField(upload_to=tweet_media_directory_path)
+    media = models.FileField(upload_to=media_directory_path)
     tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='media')
 
 

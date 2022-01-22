@@ -9,8 +9,10 @@ from django.core.files import File
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
+from clone_twitter.tweet.models import media_directory_path
 from twitter.settings import AWS_S3_CUSTOM_DOMAIN
 # Create your models here.
+
 
 class CustomUserManager(BaseUserManager):
 
@@ -67,7 +69,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # profile related fields
     # profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
-    header_img = models.ImageField(null=True, blank=True, upload_to='header/')
+    header_img = models.ImageField(null=True, blank=True, upload_to=lambda x: media_directory_path(x, 'header'))
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
@@ -102,6 +104,6 @@ class ProfileMedia(models.Model):
     #    filename_base, filename_ext = os.path.splitext(filename)
     #    return 'profile/' + self.user.id + '/' + now().strftime('%Y%m%d_%H%M%S') + '_' + str(randint(10000000, 99999999)) + filename_ext
 
-    media = models.ImageField(upload_to='profile/')
+    media = models.ImageField(upload_to=lambda x: media_directory_path(x, 'profile'))
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_img')
     image_url = models.URLField(default=default_profile_img) #only used for social login user / default image
