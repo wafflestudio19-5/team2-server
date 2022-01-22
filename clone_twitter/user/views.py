@@ -263,7 +263,6 @@ class KakaoCallbackView(APIView):
             url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get access_token"
             response = redirect(url)
             return response
-            #return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get access_token'})
 
         # 2. get user information
         user_info_url = "https://kapi.kakao.com/v2/user/me"
@@ -273,7 +272,6 @@ class KakaoCallbackView(APIView):
             url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get kakao_id"
             response = redirect(url)
             return response
-            # return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to get kakao_id'})
 
         user_info = user_info_response["kakao_account"]
         profile = user_info["profile"]
@@ -282,17 +280,18 @@ class KakaoCallbackView(APIView):
         is_default_image = profile.get("is_default_image", True)
         email = user_info.get("email", None)
 
+
         # 3. connect kakao account - user
         # user signed up with kakao -> enable kakao login (Q. base login?)
         # case 1. user who has signed up with kakao account trying to login
-        kakao_account = SocialAccount.objects.filter(account_id=kakao_id)
+        kakao_account = SocialAccount.objects.filter(account_id=kakao_id, type='kakao')
         if kakao_account:
             user = kakao_account.first().user
             token = jwt_token_of(user)
             url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
+
             return response
-            # return Response({'success': True, 'token': token, 'user_id': user.user_id}, status=status.HTTP_200_OK)
 
         # case 2. new user signup with kakao (might use profile info)
         else:  #TODO exception duplicate email
@@ -321,9 +320,7 @@ class KakaoCallbackView(APIView):
             response = redirect(url)
 
             return response
-            # return Response({'token': token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
-# UNLINK_REDIRECT_URI = get_secret("UNLINK")
 ADMIN_KEY = get_secret("ADMIN_KEY")
 
 class KakaoUnlinkView(APIView): # deactivate
@@ -406,7 +403,7 @@ class GoogleCallbackView(APIView):
 
         # 3. connect google account - user
         # case 1. user who has signed up with google account trying to login
-        google_account = SocialAccount.objects.filter(account_id=google_id)  #TODO add type = google
+        google_account = SocialAccount.objects.filter(account_id=google_id, type='google')  #TODO add type = google
         if google_account:
             user = google_account.first().user
             token = jwt_token_of(user)
