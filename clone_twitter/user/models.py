@@ -9,7 +9,7 @@ from django.core.files import File
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
-from clone_twitter.tweet.models import media_directory_path
+from tweet.models import media_directory_path
 from twitter.settings import AWS_S3_CUSTOM_DOMAIN
 # Create your models here.
 
