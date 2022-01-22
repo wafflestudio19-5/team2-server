@@ -389,7 +389,7 @@ class GoogleCallbackView(APIView):
             + f"&grant_type=authorization_code&redirect_uri={GOOGLE_CALLBACK_URI}").json()  #state?
         error = token_res.get("error")
         if error is not None:
-            url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=failed to get access_token"
+            url = FRONT_URL + "oauth/callback/google/?code=null" + "&message=error"
             response = redirect(url)
             return response
 
@@ -404,28 +404,27 @@ class GoogleCallbackView(APIView):
         email = user_info_response.get("email", None)
         profile_img_url = user_info_response.get("picture")
 
-        # 3. connect kakao account - user
+        # 3. connect google account - user
         # case 1. user who has signed up with google account trying to login
         google_account = SocialAccount.objects.filter(account_id=google_id)  #TODO add type = google
         if google_account:
             user = google_account.first().user
             token = jwt_token_of(user)
-            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
+            url = FRONT_URL + "oauth/callback/google/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
-            # return Response(status=status.HTTP_200_OK, data="already")
             return response
 
-        # case 2. new user signup with kakao (might use profile info)
+        # case 2. new user signup with google (might use profile info)
         else:
             random_id = unique_random_id_generator()
 
             if email and User.objects.filter(email=email).exists():
-                url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=duplicate email"
+                url = FRONT_URL + "oauth/callback/google/?code=null" + "&message=duplicate email"
                 response = redirect(url)
                 return response
 
             user = User(user_id=random_id, email=email, username=username)
-            user.set_unusable_password()  # user signed up with kakao can only login via kakao login
+            user.set_unusable_password()  # user signed up with google can only login via kakao login
             user.save()
             profile_media = ProfileMedia(image_url=profile_img_url)
             profile_media.user = user
@@ -433,13 +432,9 @@ class GoogleCallbackView(APIView):
 
             google_account = SocialAccount.objects.create(account_id=google_id, type='google', user=user)
             token = jwt_token_of(user)
-            url = FRONT_URL + "oauth/callback/kakao/?code=" + token + "&user_id=" + user.user_id
+            url = FRONT_URL + "oauth/callback/google/?code=" + token + "&user_id=" + user.user_id
             response = redirect(url)
-            # return Response(status=status.HTTP_200_OK, data="new")
             return response
-
-
-
 
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
