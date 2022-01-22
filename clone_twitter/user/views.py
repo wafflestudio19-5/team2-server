@@ -2,6 +2,13 @@ import json
 from multiprocessing.sharedctypes import Value
 import re
 from django.test import tag
+<<<<<<< HEAD
+=======
+from rest_framework_jwt.authentication import JSONWebTokenAuthentication
+from django.core.mail import EmailMessage
+
+import twitter.settings
+>>>>>>> Feat: custom authentication and email verification
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -20,6 +27,7 @@ from user.models import Follow, User, SocialAccount, ProfileMedia
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
+from twitter.authentication import CustomJWTAuthentication
 
 # for email
 from django.contrib.sites.shortcuts import get_current_site
@@ -527,25 +535,31 @@ class SearchPeopleView(APIView, UserListPagination):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+DOMAIN = get_secret("DOMAIN")
 class SignupEmailSendView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
 
     def post(self, request):
+        target_email = request.data.get('email', None)
         user = request.user
-        current_site = get_current_site(request)
-        domain = current_site.domain
+        domain = "127.0.0.1:8000" if twitter.settings.DEBUG else DOMAIN
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = account_activation_token.make_token(user)
         message_data = active_message(domain, uidb64, token)
-        mail_title = "waffletwitter 가입을 위한 인증 이메일입니다."
-        mail_to = request.data["email"]
+        mail_title = "[Team2] waffletwitter 가입을 위한 인증 이메일입니다."
+        mail_to = user.email  # default: user's email
+        if target_email is not None:
+            mail_to = target_email
         email = EmailMessage(mail_title, message_data, to=[mail_to])
         email.send()
+        return Response({"message": "email sent to user"}, status=status.HTTP_200_OK)
 
 class EmailActivateView(APIView):
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
 
-    def get(self, request, uidb64, token):
+    def get(self, request, uidb64=None, token=None):
         try:
             uid = force_text(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)

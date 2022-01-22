@@ -6,6 +6,7 @@ import six
 from django.utils.timezone import now
 
 
+
 def random_string_generator():
     random = str(uuid.uuid4())
     random = random.upper()

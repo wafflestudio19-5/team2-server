@@ -42,7 +42,7 @@ SECRET_KEY = get_secret("SECRET_KEY")
 FRONT_URL = get_secret("FRONT_URL")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
 ALLOWED_HOSTS = ['127.0.0.1', '15.165.77.144', 'localhost']
@@ -115,7 +115,7 @@ DB_PASSWORD = get_secret("DATABASE")
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
+        'HOST': 'localhost', #database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
         # 'HOST': 'localhost',
         'PORT': 3306,
         'NAME': 'twitter_backend',
