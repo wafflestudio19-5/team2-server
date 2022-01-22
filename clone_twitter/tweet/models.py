@@ -1,16 +1,10 @@
 import os
-from random import randint
 
 from django.db import models
 from django.utils import timezone
-from django.utils.timezone import now
+from twitter.utils import media_directory_path
 
 from user.models import User
-
-def media_directory_path(instance, filename, usage='tweet'):
-    filename_base, filename_ext = os.path.splitext(filename)
-    return usage+'/'+now().strftime('%Y%m%d_%H%M%S')+'_'+str(randint(10000000,99999999))+filename_ext
-
 
 class Tweet(models.Model):
     TYPE = (

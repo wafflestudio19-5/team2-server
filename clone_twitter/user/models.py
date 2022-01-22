@@ -9,10 +9,16 @@ from django.core.files import File
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
-from tweet.models import media_directory_path
+from uritemplate import partial
+from twitter.utils import media_directory_path
 from twitter.settings import AWS_S3_CUSTOM_DOMAIN
 # Create your models here.
 
+def profile_media_path(instance, filename):
+    return media_directory_path(instance, filename, usage="profile")
+
+def header_media_path(instance, filename):
+    return media_directory_path(instance, filename, usage="header")
 
 class CustomUserManager(BaseUserManager):
 
@@ -69,7 +75,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # profile related fields
     # profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
-    header_img = models.ImageField(null=True, blank=True, upload_to=lambda x: media_directory_path(x, 'header'))
+    header_img = models.ImageField(null=True, blank=True, upload_to=profile_media_path)
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
@@ -93,7 +99,8 @@ class Follow(models.Model):
 class SocialAccount(models.Model):
     TYPES = (('kakao', 'Kakao'),)  # add Google later after implementation
 
-    user = models.OneToOneField(get_user_model(), related_name='social_account', on_delete=models.CASCADE)
+    user = models.OneToOneField(get_user_model(), related_name='social_account', 
+    on_delete=models.CASCADE)
     type = models.CharField(choices=TYPES, max_length=10)
     account_id = models.IntegerField() # only for kakao login -> unique = true but.. if we add other social login then..
 
@@ -104,6 +111,6 @@ class ProfileMedia(models.Model):
     #    filename_base, filename_ext = os.path.splitext(filename)
     #    return 'profile/' + self.user.id + '/' + now().strftime('%Y%m%d_%H%M%S') + '_' + str(randint(10000000, 99999999)) + filename_ext
 
-    media = models.ImageField(upload_to=lambda x: media_directory_path(x, 'profile'))
+    media = models.ImageField(upload_to=header_media_path)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_img')
     image_url = models.URLField(default=default_profile_img) #only used for social login user / default image
