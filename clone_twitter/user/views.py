@@ -53,7 +53,6 @@ class TokenVerifyView(APIView):
 
 class EmailSignUpView(APIView):   #signup with email
     permission_classes = (permissions.AllowAny, )
-    # parser_classes = [JSONParser]
 
     @swagger_auto_schema(request_body=openapi.Schema(  #TODO check format
         type=openapi.TYPE_OBJECT,

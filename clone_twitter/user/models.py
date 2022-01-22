@@ -25,19 +25,9 @@ class CustomUserManager(BaseUserManager):
     use_in_migrations = True
     # TODO change to create user with only email / phone-number
     def _create_user(self, user_id, password, **extra_fields):
-        img = extra_fields.pop('profile_img', None)  # url(kakao) / file
-        url = extra_fields.pop('kakao_profile', None)
-        is_social = extra_fields.pop('is_social', False)
         user = self.model(user_id=user_id, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
-
-        profile_media = ProfileMedia(user=user)
-        if is_social:
-            profile_media.img_url = url
-        elif img:
-            profile_media.media = img
-        profile_media.save()
 
         return user
 
