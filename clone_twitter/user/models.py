@@ -25,10 +25,6 @@ class CustomUserManager(BaseUserManager):
     use_in_migrations = True
     # TODO change to create user with only email / phone-number
     def _create_user(self, user_id, password, **extra_fields):
-        # if not email:
-        #    raise ValueError('이메일을 설정해주세요.')
-        # if email:  # changed
-        #    email = self.normalize_email(email)
         img = extra_fields.pop('profile_img', None)  # url(kakao) / file
         url = extra_fields.pop('kakao_profile', None)
         is_social = extra_fields.pop('is_social', False)
@@ -73,15 +69,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{4}-[\d]{4}")  # another option: 1)validation with drf 2)external library
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)
 
-    # profile related fields
-    # profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
     header_img = models.ImageField(null=True, blank=True, upload_to=profile_media_path)
+
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
-    # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
     allow_notification = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    # Q. lanaguage, url field?
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
