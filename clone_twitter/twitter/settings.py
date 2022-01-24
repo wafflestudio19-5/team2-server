@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'user',
     'tweet',
+    'notification',
     'drf_yasg',
     'corsheaders',
     'storages',

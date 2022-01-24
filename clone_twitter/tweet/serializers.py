@@ -1,7 +1,10 @@
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+
+from notification.serializers import mention
 from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia, Quote
 from user.models import ProfileMedia
 User = get_user_model()
@@ -107,6 +110,19 @@ class TweetWriteSerializer(serializers.Serializer):
         for media in media_list:
             if media is not None:
                 tweet_media = TweetMedia.objects.create(media=media, tweet=tweet)
+
+        splited = content.split(' ')
+        for x in splited:
+            if x.startswith('@'):
+                data = {'user_id': x[1:], 'tweet_id': tweet.id}
+                try:
+                    mention(data)
+                except User.DoesNotExist:
+                    pass
+                except Tweet.DoesNotExist:
+                    pass
+                except IntegrityError:
+                    pass
 
         return tweet
 
@@ -314,6 +330,19 @@ class ReplySerializer(serializers.Serializer):
             if media is not None:
                 tweet_media = TweetMedia.objects.create(media=media, tweet=replying)
 
+        splited = content.split(' ')
+        for x in splited:
+            if x.startswith('@'):
+                data = {'user_id': x[1:], 'tweet_id': replying.id}
+                try:
+                    mention(data)
+                except User.DoesNotExist:
+                    pass
+                except Tweet.DoesNotExist:
+                    pass
+                except IntegrityError:
+                    pass
+
         return True
 
 
@@ -386,7 +415,21 @@ class QuoteSerializer(serializers.Serializer):
             if media is not None:
                 tweet_media = TweetMedia.objects.create(media=media, tweet=quoting)
 
+        splited = content.split(' ')
+        for x in splited:
+            if x.startswith('@'):
+                data = {'user_id': x[1:], 'tweet_id': quoting.id}
+                try:
+                    mention(data)
+                except User.DoesNotExist:
+                    pass
+                except Tweet.DoesNotExist:
+                    pass
+                except IntegrityError:
+                    pass
+
         return True
+
 
 class LikeSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)
