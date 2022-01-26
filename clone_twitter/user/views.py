@@ -9,7 +9,7 @@ from tweet.serializers import TweetSerializer
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
-from user.utils import unique_random_id_generator, unique_random_email_generator
+from twitter.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
@@ -298,8 +298,8 @@ class KakaoCallbackView(APIView):
 
         # case 2. new user signup with kakao (might use profile info)
         else:  #TODO exception duplicate email
-            random_id = unique_random_id_generator()
-            fake_email = unique_random_email_generator()
+            random_id = unique_random_id_generator(User.objects)
+            fake_email = unique_random_email_generator(User.objects)
 
             if email and User.objects.filter(email=email).exists():
                 url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=duplicate email"

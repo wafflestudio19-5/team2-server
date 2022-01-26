@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
             name='TweetMedia',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('media', models.FileField(upload_to=tweet.models.tweet_media_directory_path)),
+                ('media', models.FileField(upload_to=tweet.models.media_directory_path)),
                 ('tweet', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='media', to='tweet.tweet')),
             ],
         ),
