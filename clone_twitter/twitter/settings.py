@@ -259,7 +259,7 @@ LOGGING = {
         # added for saving log files
         'file': {
             'level': 'DEBUG',
-            'filters': ['require_debug_true'],  # later change to debug_false (only for server)
+            'filters': ['require_debug_false'],  # later change to debug_false (only for server)
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'django.server',
             'encoding': 'UTF-8',
