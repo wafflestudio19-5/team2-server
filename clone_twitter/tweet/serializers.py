@@ -114,15 +114,7 @@ class TweetWriteSerializer(serializers.Serializer):
         splited = content.split(' ')
         for x in splited:
             if x.startswith('@'):
-                data = {'user_id': x[1:], 'tweet_id': tweet.id}
-                try:
-                    mention(data)
-                except User.DoesNotExist:
-                    pass
-                except Tweet.DoesNotExist:
-                    pass
-                except IntegrityError:
-                    pass
+                mention(x[1:], tweet)
 
         return tweet
 
@@ -333,15 +325,8 @@ class ReplySerializer(serializers.Serializer):
         splited = content.split(' ')
         for x in splited:
             if x.startswith('@'):
-                data = {'user_id': x[1:], 'tweet_id': replying.id}
-                try:
-                    mention(data)
-                except User.DoesNotExist:
-                    pass
-                except Tweet.DoesNotExist:
-                    pass
-                except IntegrityError:
-                    pass
+                mention(x[1:], replying)
+        mention(reply_to, replying)
 
         return True
 
@@ -418,15 +403,8 @@ class QuoteSerializer(serializers.Serializer):
         splited = content.split(' ')
         for x in splited:
             if x.startswith('@'):
-                data = {'user_id': x[1:], 'tweet_id': quoting.id}
-                try:
-                    mention(data)
-                except User.DoesNotExist:
-                    pass
-                except Tweet.DoesNotExist:
-                    pass
-                except IntegrityError:
-                    pass
+                mention(x[1:], quoting)
+
 
         return True
 
