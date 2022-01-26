@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from notification.serializers import mention
+from notification.serializers import mention, notify
 from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia, Quote
 from user.models import ProfileMedia
 User = get_user_model()
@@ -115,6 +115,7 @@ class TweetWriteSerializer(serializers.Serializer):
         for x in splited:
             if x.startswith('@'):
                 mention(x[1:], tweet)
+                notify(author, x[1:], tweet, 'MENTION')
 
         return tweet
 
@@ -326,7 +327,9 @@ class ReplySerializer(serializers.Serializer):
         for x in splited:
             if x.startswith('@'):
                 mention(x[1:], replying)
+                notify(author, x[1:], replying, 'MENTION')
         mention(reply_to, replying)
+        notify(author, reply_to, replying, 'REPLY')
 
         return True
 
@@ -362,6 +365,8 @@ class RetweetSerializer(serializers.Serializer):
         for media in media_list:
             if media is not None:
                 tweet_media = TweetMedia.objects.create(media=media.media, tweet=retweeting)
+
+        notify(me, author.user_id, retweeting, 'RETWEET')
 
         return True
 
@@ -404,6 +409,7 @@ class QuoteSerializer(serializers.Serializer):
         for x in splited:
             if x.startswith('@'):
                 mention(x[1:], quoting)
+                notify(author, x[1:], quoting, 'MENTION')
 
 
         return True
@@ -424,6 +430,8 @@ class LikeSerializer(serializers.Serializer):
 
         me = self.context['request'].user
         user_like = UserLike.objects.create(user=me, liked=liked)
+
+        notify(me, liked.author.id, liked, "LIKE")
 
         return True
 
