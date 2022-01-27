@@ -102,7 +102,7 @@ class SocialAccount(models.Model):
     user = models.OneToOneField(get_user_model(), related_name='social_account', 
     on_delete=models.CASCADE)
     type = models.CharField(choices=TYPES, max_length=10)
-    account_id = models.IntegerField() # only for kakao login -> unique = true but.. if we add other social login then..
+    account_id = models.CharField(max_length=30) # only for kakao login -> unique = true but.. if we add other social login then..
 
 class ProfileMedia(models.Model):
     default_profile_img = 'https://team2-django-media.s3.ap-northeast-2.amazonaws.com/media/profile/default_user_profile.jpeg'

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'user',
     'tweet',
+    'notification',
     'drf_yasg',
     'corsheaders',
     'storages',
@@ -156,6 +157,9 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+
+ACCOUNT_DEFAULT_HTTP_PROTOCOL='https'  # for https social login redirect
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
@@ -261,7 +265,7 @@ LOGGING = {
             'formatter': 'django.server',
             'encoding': 'UTF-8',
             'filename': os.path.join(BASE_DIR, 'logging/clonetwitter.log'),
-            'maxBytes': 1024 * 1024 * 100,  # 100 MB
+            'maxBytes': 1024 * 1024 * 5,  # TODO 5 MB
             'backupCount': 5,
         },
     },
