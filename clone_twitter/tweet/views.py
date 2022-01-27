@@ -1,3 +1,4 @@
+from user.models import User
 import tweet.paginations
 from django.db import IntegrityError
 from django.db.models.aggregates import Count
@@ -323,3 +324,94 @@ class ThreadViewSet(viewsets.ReadOnlyModelViewSet):
 
         data.append(pagination_info)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class UserTweetsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = TweetSerializer
+    pagination_class = tweet.paginations.TweetListPagination
+
+    # GET /api/v1/usertweets/{user_id}/tweets/
+    @action(detail=True, methods=['GET'])
+    def tweets(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        q = Q()
+        q |= (Q(author=user) & Q(tweet_type='GENERAL'))                    # tweets written(or quoted) by the user
+        q |= (Q(retweeting_user=user.user_id) & Q(tweet_type='RETWEET'))    # tweets retweeted by the user
+
+        queryset = Tweet.objects.filter(q).order_by('-created_at')
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+    # GET /api/v1/usertweets/{user_id}/tweets_replies/
+    @action(detail=True, methods=['GET'])
+    def tweets_replies(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        q = Q()
+        q |= (Q(author=user) & ~Q(tweet_type='RETWEET'))                    # tweets written(or replied, quoted) by the user
+        q |= (Q(retweeting_user=user.user_id) & Q(tweet_type='RETWEET'))    # tweets retweeted by the user
+        
+        queryset = Tweet.objects.filter(q).order_by('-created_at')
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+    # GET /api/v1/usertweets/{user_id}/media/
+    @action(detail=True, methods=['GET'])
+    def media(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        q = (Q(author=user) & ~Q(tweet_type='RETWEET'))                    # tweets written(or quoted) by the user
+
+        queryset = Tweet.objects.annotate(media_count=Count('media')).filter(q & Q(media_count__gt=0)).order_by('-created_at')
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+    # GET /api/v1/usertweets/{user_id}/likes/
+    @action(detail=True, methods=['GET'])
+    def likes(self, request, pk=None):
+        if pk == 'me':
+            user = request.user
+        else:
+            user = get_object_or_404(User, user_id=pk)
+
+        queryset = Tweet.objects.filter(liked_by__user__user_id__contains=user.user_id).order_by('-liked_by__created_at')
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
-from user.views import LikedListView, PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, \
-    UserFollowView, UserUnfollowView, FollowListViewSet, KakaoCallbackView, KaKaoSignInView, \
+from user.views import PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, \
+    UserFollowView, UserUnfollowView, FollowListViewSet, KaKaoSignInView, \
     UserRecommendView, FollowRecommendView, UserDeactivateView, KakaoUnlinkView
 
 router = SimpleRouter()
@@ -20,6 +20,5 @@ urlpatterns = [
     path('kakao/signup/', KaKaoSignInView.as_view(), name='kakao-signup'),
     path('kakao/unlink/', KakaoUnlinkView.as_view(), name='kakao-unlink'),
     path('search/people/', SearchPeopleView.as_view(), name='search-people'), # /api/v1/search/people/
-    path('user/<str:user_id>/liked/', LikedListView.as_view(), name='user-liked'), # /api/v1/user/{user_user_id}/liked/
     path('', include(router.urls))
 ]
