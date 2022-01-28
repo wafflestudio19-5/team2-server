@@ -27,6 +27,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('user.urls')),
     path('api/v1/', include('tweet.urls')),
+    path('api/v1/', include('notification.urls')),
     path('oauth/callback/kakao/', KakaoCallbackView.as_view(), name='kakao'), #tmp
 ]
 
@@ -35,6 +36,7 @@ schema_url_patterns = [   # urls that we want to check in swagger
     path('admin/', admin.site.urls),
     path('api/v1/', include('user.urls')),
     path('api/v1/', include('tweet.urls')),
+    path('api/v1/', include('notification.urls')),
 ]
 
 schema_view_v1 = get_schema_view(
