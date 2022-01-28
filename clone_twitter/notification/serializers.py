@@ -15,6 +15,8 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def get_written_by_me(self, notification):
         tweet = notification.tweet
+        if tweet is None:
+            return False
         author = tweet.author
         me = self.context['request'].user
 
