@@ -224,7 +224,7 @@ class TweetSerializer(serializers.ModelSerializer):
 class TweetSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Tweet
-        exclude = ['created_at']
+        exclude = ['created_at', 'retweeting_user']
 
     author = UserSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
