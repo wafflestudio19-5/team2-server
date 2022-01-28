@@ -7,7 +7,7 @@ from tweet.views import TweetPostView, ReplyView, RetweetView, TweetDetailView, 
 router = SimpleRouter()
 router.register('tweet', ThreadViewSet, basename='thread')                          # /api/v1/tweet/
 router.register('search', TweetSearchViewSet, basename='search')  # /api/v1/search/
-router.register('usertweets', UserTweetsViewSet, basename='usertweest') # /api/v1/usertweets/
+router.register('usertweets', UserTweetsViewSet, basename='usertweets') # /api/v1/usertweets/
 
 urlpatterns = [
     path('tweet/', TweetPostView.as_view(), name='post'),                           # /api/v1/tweet/
