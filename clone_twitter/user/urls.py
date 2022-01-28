@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from user.views import PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, \
+from user.views import PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, TokenVerifyView,\
     UserFollowView, UserUnfollowView, FollowListViewSet, KakaoCallbackView, KaKaoSignInView, \
     UserRecommendView, FollowRecommendView, UserDeactivateView, KakaoUnlinkView, GoogleSignInView, GoogleCallbackView
 
@@ -11,6 +11,7 @@ router.register('user', UserInfoViewSet, basename='user') # /api/v1/user/
 
 urlpatterns = [
     path('ping/', PingPongView.as_view(), name='ping'),  # /api/v1/ping/
+    path('token/verify/', TokenVerifyView.as_view(), name='ping'),  # /api/v1/token/verify/
     path('signup/', EmailSignUpView.as_view(), name='signup'),  # /api/v1/signup/
     path('login/', UserLoginView.as_view(), name='login'),  # /api/v1/login/
     path('deactivate/', UserDeactivateView.as_view(), name='deactivate'),  # /api/v1/deactivate/

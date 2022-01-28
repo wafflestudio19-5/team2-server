@@ -36,6 +36,12 @@ class PingPongView(APIView):
     def get(self, request):
         return Response(data={'ping': 'pong'}, status=status.HTTP_200_OK)
 
+class TokenVerifyView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        return Response(data={'is_valid_token': True}, status=status.HTTP_200_OK)
+
 class EmailSignUpView(APIView):   #signup with email
     permission_classes = (permissions.AllowAny, )
     # parser_classes = [JSONParser]
