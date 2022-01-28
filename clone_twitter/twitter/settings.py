@@ -123,7 +123,11 @@ DATABASES = {
         'PASSWORD': DB_PASSWORD,
         'TEST': {
             'NAME': 'test_twitter_backend',
-        }
+        },
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'use_unicode': True, 
+        },
     }
 }
 
