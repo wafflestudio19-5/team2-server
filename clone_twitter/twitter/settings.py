@@ -42,7 +42,7 @@ SECRET_KEY = get_secret("SECRET_KEY")
 FRONT_URL = get_secret("FRONT_URL")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
 ALLOWED_HOSTS = ['127.0.0.1', '15.165.77.144', 'localhost']
@@ -115,7 +115,7 @@ DB_PASSWORD = get_secret("DATABASE")
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'localhost', #database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
+        'HOST': 'database-team2.c0iqv4ih6zfa.ap-northeast-2.rds.amazonaws.com',
         # 'HOST': 'localhost',
         'PORT': 3306,
         'NAME': 'twitter_backend',
@@ -198,10 +198,12 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# celery setting
+
+# celery
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
