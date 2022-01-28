@@ -106,6 +106,7 @@ class SocialAccount(models.Model):
 
 class ProfileMedia(models.Model):
     default_profile_img = 'https://team2-django-media.s3.ap-northeast-2.amazonaws.com/media/profile/default_user_profile.jpeg'
+    default_header_img = 'https://team2-django-media.s3.ap-northeast-2.amazonaws.com/media/header/default_header.png'
 
     # def profile_media_directory_path(self, filename):
     #    filename_base, filename_ext = os.path.splitext(filename)
