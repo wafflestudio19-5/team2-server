@@ -865,7 +865,7 @@ class GetSearchPeopleTestCase(TestCase):
     def test_get_search_people_without_atsign(self):
         response = self.client.get(                            
             '/api/v1/search/people/',
-            {'query': r'bb+cc+aa+dd%20ee'},
+            {'query': r'bb+cc+aa+dd+ee'},
             content_type='application/json',
             HTTP_AUTHORIZATION=self.tokens[0])
         
