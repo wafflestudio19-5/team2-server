@@ -1,9 +1,11 @@
+import base64
+import hmac
 import json
 from multiprocessing.sharedctypes import Value
-import re
+import re, twitter
 from django.test import tag
 
-import twitter
+import hashlib, hmac, time, requests, sys, os
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -17,7 +19,7 @@ from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError, transaction
 from django.db.models import Q, Count
-from user.models import Follow, User, SocialAccount, ProfileMedia
+from user.models import Follow, User, SocialAccount, ProfileMedia, AuthCode
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
@@ -565,3 +567,63 @@ class EmailActivateView(APIView):
 
         except KeyError:
             return Response({"message": "KEY_ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+ACCESS_KEY = get_secret("NAVER_ACCESS_ID")
+NAVER_SECRET = get_secret("NAVER_SECRET")
+TEAM2_PHONE = get_secret("TEAM2_PHONE")
+SERVICE_ID = get_secret("SERVICE_ID")
+
+class VerifySMSView(APIView):
+
+    def post(self, request):
+        user = request.user
+        target_phone_num = user.phone_number
+        truncated_p_num = target_phone_num.replace('-', '')
+        code, created = AuthCode.objects.update_or_create(phone_number=target_phone_num)
+        auth_code = code.auth_code
+        result = self.send_sms(truncated_p_num, auth_code)
+
+        if result == 'fail':
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to send SMS'})
+        return Response(status=status.HTTP_200_OK, data={'message': 'SMS sent to user'})
+
+    def get(self, request):
+        phone_number = request.GET.get('phone_number', None)
+        submitted_code = request.GET.get('auth_code', None)
+        if not phone_number or not submitted_code:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'missing query params'})
+
+        is_verified = AuthCode.check_sms_code(phone_number, submitted_code)
+        if is_verified:
+            request.user.update(is_verified=True)
+            return Response({"message": "sms verification success"}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'wrong code'})
+
+    def make_signature(self, access_key, secret_key, method, uri, timestamp):
+        secret_key = bytes(secret_key, 'UTF-8')
+        message = method + " " + uri + "\n" + timestamp + "\n" + access_key
+        signingKey = base64.b64encode(hmac.new(secret_key, message, digestmod=hashlib.sha256).digest())
+        return signingKey
+
+    def send_sms(self, phone_number, auth_code):
+        timestamp = str(int(time.time() * 1000))
+        sms_uri = f'/sms/v2/services/{SERVICE_ID}/messages'
+        signature = self.make_signature(ACCESS_KEY, NAVER_SECRET, 'POST', sms_uri, timestamp)
+        url = f'https://api-sens.ncloud.com/v2/sms/services/{SERVICE_ID}/messages/'
+        data = {
+            {
+                "type": "SMS",
+                "from": TEAM2_PHONE,
+                "content": f"[Team2] WaffleTwitter 인증 번호 [{auth_code}]를 입력해주세요.",
+                "messages": [{"to": phone_number, }]
+            }
+        }
+        headers = {
+            'Content-Type': 'application/json',
+            'x-ncp-apigw-timestamp': timestamp,
+            'x-ncp-iam-access-key': ACCESS_KEY,
+            'x-ncp-apigw-signature-v2': signature
+        }
+        response = requests.post(url, json=data, headers=headers)
+        return response['statusName']
