@@ -84,7 +84,7 @@ class EmailSignUpView(APIView):   #signup with email
 
 class UserLoginView(APIView): #login with user_id
     permission_classes = (permissions.AllowAny, )
-    authentication_classes = (CustomJWTAuthentication, )
+
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
