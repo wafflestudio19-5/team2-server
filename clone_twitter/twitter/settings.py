@@ -189,6 +189,21 @@ STATICFILES_STORAGE = 'twitter.storages.S3StaticStorage'
 
 MEDIA_URL = '/media/'
 
+# for email send
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_HOST_USER = get_secret("EMAIL_HOST_USER")  # 설정에 사용한 GMail 계정
+EMAIL_HOST_PASSWORD = get_secret("EMAIL_HOST_PASSWORD") # 설정에 사용한 GMail 비밀번호
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+# celery
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
