@@ -218,7 +218,8 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
         search_keywords = request.query_params['query']
-        search_keywords = re.split('%%20|+', search_keywords)
+        search_keywords = list(filter(lambda x: x != '', re.split(r'%20|\+', search_keywords)))
+
 
         sorted_queryset = \
             Tweet.objects.all() \
@@ -242,7 +243,7 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
         search_keywords = request.query_params['query']
-        search_keywords = re.split('%%20|+', search_keywords)
+        search_keywords = list(filter(lambda x: x != '', re.split(r'%20|\+', search_keywords)))
 
         sorted_queryset = \
             Tweet.objects.all() \
