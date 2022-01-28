@@ -3,6 +3,7 @@ from multiprocessing.sharedctypes import Value
 import re
 from django.test import tag
 
+import twitter
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -11,7 +12,6 @@ from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
@@ -21,6 +21,18 @@ from user.models import Follow, User, SocialAccount, ProfileMedia
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
+from twitter.authentication import CustomJWTAuthentication
+
+# for email
+from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.core.mail import EmailMessage
+from twitter.utils import account_activation_token, active_message
+from django.utils.encoding import force_bytes, force_text
+from .tasks import send_email_task
+
 # Create your views here.
 
 class PingPongView(APIView):
@@ -44,7 +56,6 @@ class TokenVerifyView(APIView):
 
 class EmailSignUpView(APIView):   #signup with email
     permission_classes = (permissions.AllowAny, )
-    # parser_classes = [JSONParser]
 
     @swagger_auto_schema(request_body=openapi.Schema(  #TODO check format
         type=openapi.TYPE_OBJECT,
@@ -490,7 +501,7 @@ class SearchPeopleView(APIView, UserListPagination):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
         search_keywords = request.query_params['query']
-        search_keywords = re.split('%%20|+', search_keywords) 
+        search_keywords = re.split('%%20|+', search_keywords)  # dangling meta character
         tag_keywords = ['']
         
 
@@ -517,3 +528,41 @@ class SearchPeopleView(APIView, UserListPagination):
 
         serializer = UserInfoSerializer(sorted_queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+DOMAIN = get_secret("DOMAIN")
+class SignupEmailSendView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
+
+    def post(self, request):
+        # TODO exception when email = null or target_email is someone other's email
+        target_email = request.data.get('email', None)
+        user = request.user
+        domain = "127.0.0.1:8000" if twitter.settings.DEBUG else DOMAIN
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = account_activation_token.make_token(user)
+        message_data = active_message(domain, uidb64, token)
+        mail_title = "[Team2] waffletwitter 가입을 위한 인증 이메일입니다."
+        mail_to = user.email  # default: user's email
+        if target_email is not None:
+            mail_to = target_email
+
+        send_email_task.delay(mail_title, message_data, mail_to) # celery task
+        return Response({"message": "email sent to user"}, status=status.HTTP_200_OK)
+
+class EmailActivateView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    # authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
+
+    def get(self, request, uidb64=None, token=None):
+        try:
+            uid = force_text(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+            if user is not None and account_activation_token.check_token(user, token):
+                User.objects.filter(pk=uid).update(is_verified=True)
+                return Response({"message": "email verification success"}, status=status.HTTP_200_OK)  # TODO Q front redirect?
+            return Response({"message": "AUTH_FAIL"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except KeyError:
+            return Response({"message": "KEY_ERROR"}, status=status.HTTP_400_BAD_REQUEST)
