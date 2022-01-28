@@ -185,10 +185,17 @@ class TweetSearchInfoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     author = UserSerializer(read_only=True)
+    media = serializers.SerializerMethodField()
     replies = serializers.SerializerMethodField()
     retweets = serializers.SerializerMethodField()
+    user_retweet = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
+    user_like = serializers.SerializerMethodField()
     
+    def get_media(self, tweet):
+        media = tweet.media.all()
+        serializer = MediaSerializer(media, many=True)
+        return serializer.data
 
     def get_replies(self, tweet):
         return tweet.replied_by.all().count()
@@ -198,6 +205,24 @@ class TweetSearchInfoSerializer(serializers.ModelSerializer):
 
     def get_likes(self, tweet):
         return tweet.liked_by.all().count()
+
+    def get_user_retweet(self, tweet):
+        me = self.context['request'].user
+        if me.is_anonymous:
+            return False
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+        user_retweet = tweet.retweeted_by.filter(user=me).count()
+        return user_retweet == 1
+
+    def get_user_like(self, tweet):
+        me = self.context['request'].user
+        if me.is_anonymous:
+            return False
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+        user_like = tweet.liked_by.filter(user=me).count()
+        return user_like == 1
 
 class TweetDetailSerializer(serializers.ModelSerializer):
     class Meta:

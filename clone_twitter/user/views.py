@@ -1,10 +1,6 @@
 import json
 from multiprocessing.sharedctypes import Value
 from django.test import tag
-import rest_framework.pagination
-from tweet.paginations import TweetListPagination
-from tweet.models import Tweet
-from tweet.serializers import TweetSerializer
 
 import user.paginations
 from django.db.models.expressions import Case, When
@@ -508,25 +504,4 @@ class SearchPeopleView(APIView, UserListPagination):
             return self.get_paginated_response(serializer.data)
 
         serializer = UserInfoSerializer(sorted_queryset, many=True, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-class LikedListView(APIView, TweetListPagination):
-    permission_classes = (permissions.AllowAny,)
-
-    # GET /api/v1/user/{user_user_id}/liked/
-    def get(self, request, user_id=None):  # user/{user_user_id}/liked/
-        if user_id == 'me':
-            user = request.user
-        else:
-            user = get_object_or_404(User, user_id=user_id)
-        
-        queryset = Tweet.objects.filter(liked_by__user__user_id__contains=user.user_id).order_by('-liked_by__created_at')
-
-        page = self.paginate_queryset(queryset, request)
-
-        if page is not None:
-            serializer = TweetSerializer(page, many=True, context={'request': request})
-            return self.get_paginated_response(serializer.data)
-        
-        serializer = TweetSerializer(page, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)

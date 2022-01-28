@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
-from user.views import LikedListView, PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, \
+
+from user.views import PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, \
     UserFollowView, UserUnfollowView, FollowListViewSet, KakaoCallbackView, KaKaoSignInView, \
     UserRecommendView, FollowRecommendView, UserDeactivateView, KakaoUnlinkView, GoogleSignInView, GoogleCallbackView
 

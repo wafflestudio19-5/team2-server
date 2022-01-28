@@ -3,12 +3,13 @@ from django.test import TestCase
 from factory.django import DjangoModelFactory
 
 from user.models import User, Follow
-from tweet.models import Tweet, Reply, Retweet, UserLike, Quote
+from tweet.models import Tweet, Reply, Retweet, TweetMedia, UserLike, Quote
 from django.test import TestCase
 from django.db import transaction
 from rest_framework import status
 from user.serializers import jwt_token_of
-from datetime import datetime, timedelta
+import datetime
+from datetime import timedelta
 
 class UserFactory(DjangoModelFactory):
     class Meta:
@@ -63,9 +64,9 @@ class UserLikeFactory(DjangoModelFactory):
 
     @classmethod
     def create(cls, **kwargs):
-        retweet = UserLike.objects.create(**kwargs)
-        retweet.save()
-        return retweet
+        like = UserLike.objects.create(**kwargs)
+        like.save()
+        return like
 
 class ReplyFactory(DjangoModelFactory):
     class Meta:
@@ -73,10 +74,29 @@ class ReplyFactory(DjangoModelFactory):
 
     @classmethod
     def create(cls, **kwargs):
-        retweet = Reply.objects.create(**kwargs)
-        retweet.save()
-        return retweet
+        reply = Reply.objects.create(**kwargs)
+        reply.save()
+        return reply
 
+class QuoteFactory(DjangoModelFactory):
+    class Meta:
+        model = Quote
+
+    @classmethod
+    def create(cls, **kwargs):
+        quote = Quote.objects.create(**kwargs)
+        quote.save()
+        return quote
+
+class TweetMediaFactory(DjangoModelFactory):
+    class Meta:
+        model = TweetMedia
+
+    @classmethod
+    def create(cls, **kwargs):
+        media = TweetMedia.objects.create(**kwargs)
+        media.save()
+        return media
 
 class PostTweetTestCase(TestCase):
 
@@ -893,7 +913,7 @@ class GetSearchTweetTestCase(TestCase):
                 tweet_type = 'GENERAL',
                 author = cls.users[i],
                 content = content_list[i],
-                written_at = datetime.now() - timedelta(seconds=written_time[i])
+                written_at = datetime.datetime.now() - timedelta(seconds=written_time[i])
             ) for i in range(len(user_id_list))]
 
         like_relation = [(0, 5), (1, 5), (2, 5), (0, 4), (1, 4), (0, 3)]
@@ -938,7 +958,7 @@ class GetSearchTweetTestCase(TestCase):
                     author = cls.users[init],
                     content = 'bbddcc',
                     reply_to = cls.users[term].user_id,
-                    written_at = datetime.now() - timedelta(seconds=delta))
+                    written_at = datetime.datetime.now() - timedelta(seconds=delta))
             )
 
             cls.replies.append(
@@ -957,10 +977,13 @@ class GetSearchTweetTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+        data = response.json()['results']
+
         # print(list(map(lambda x:x['author']['user_id'], response.json())))
-        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json()['results'])),
-        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2'])
-        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json()['results'])),
+        self.assertIn('media', data[0])
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], data)),
+        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test2', 'test3'])
+        self.assertEqual(list(map(lambda x:x['tweet_type'], data)),
         ['GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])
 
     def test_get_search_latest(self):
@@ -972,10 +995,13 @@ class GetSearchTweetTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+        data = response.json()['results']
+
         # print(list(map(lambda x:x['author']['user_id'], response.json())))
-        self.assertEqual(list(map(lambda x:x['author']['user_id'], response.json()['results'])),
+        self.assertIn('media', data[0])
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], data)),
         ['test9', 'test6', 'test3', 'test7', 'test4', 'test8ee', 'test3', 'test3', 'test4', 'test5', 'test2', 'test1'])
-        self.assertEqual(list(map(lambda x:x['tweet_type'], response.json()['results'])),
+        self.assertEqual(list(map(lambda x:x['tweet_type'], data)),
         ['GENERAL', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'REPLY', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL', 'GENERAL'])
 
 class QuoteTestCase(TestCase):
@@ -1081,3 +1107,263 @@ class QuoteTestCase(TestCase):
 
         quote_count = Quote.objects.count()
         self.assertEqual(quote_count, 1)
+
+class GetUserTweetsTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = UserFactory(
+            email='email@email.com',
+            user_id='user1_id',
+            username='username',
+            password='password',
+            phone_number='010-1234-5678',
+            bio='I am User 1.',
+            birth_date=datetime.date(2002, 11, 15)
+        )
+        cls.user1_token = 'JWT ' + jwt_token_of(User.objects.get(email='email@email.com'))
+
+        cls.user2 = UserFactory(
+            email='email2@email.com',
+            user_id='user2_id',
+            username='username2',
+            password='password',
+            phone_number='010-2345-6789',
+            bio='', # blank
+            birth_date=None # null
+        )
+        cls.user2_token = 'JWT ' + jwt_token_of(User.objects.get(email='email2@email.com'))
+
+        cls.user3 = UserFactory(
+            email='email3@email.com',
+            user_id='user3_id',
+            username='username3',
+            password='password',
+            phone_number='010-3456-7890',
+            bio='I am User 3.',
+            birth_date=datetime.date(2006, 10, 18)
+        )
+        cls.user3_token = 'JWT ' + jwt_token_of(User.objects.get(email='email3@email.com'))
+
+        cls.tweet1 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user1,
+            content = 'content1'
+        )
+
+        cls.tweet2 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user1,
+            content = 'content2'
+        )
+
+        cls.tweet3 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user3,
+            content = 'content3'
+        )
+                                                                                                                                                                                                                                                                                                                                    
+        cls.tweet4 = TweetFactory(
+            tweet_type = 'RETWEET',
+            author = cls.user3,
+            retweeting_user = 'user1_id',
+            content = 'content3'
+        )
+
+        cls.tweet5 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user2,
+            content = 'content4'
+        )
+
+        cls.tweet6 = TweetFactory(
+            tweet_type = 'GENERAL',
+            author = cls.user1,
+            content = 'content4 quoted'
+        )
+
+        cls.tweet7 = TweetFactory(
+            tweet_type = 'REPLY',
+            author = cls.user1,
+            reply_to = 'user1_id',
+            content = 'reply1'
+        )
+
+        cls.tweet8 = TweetFactory(
+            tweet_type = 'REPLY',
+            author = cls.user1,
+            reply_to = 'user2_id',
+            content = 'reply2'
+        )
+
+        cls.retweet = RetweetFactory(
+            retweeted = cls.tweet3,
+            retweeting = cls.tweet4,
+            user = cls.user1
+        )
+
+        cls.quote = QuoteFactory(
+            quoted = cls.tweet5,
+            quoting = cls.tweet6
+        )
+
+        cls.reply1 = ReplyFactory(
+            replied = cls.tweet1,
+            replying = cls.tweet7
+        )
+
+        cls.reply2 = ReplyFactory(
+            replied = cls.tweet5,
+            replying = cls.tweet8
+        )
+
+        cls.userlike1 = UserLikeFactory(
+            user = cls.user1,
+            liked = cls.tweet3
+        )
+
+        cls.userlike2 = UserLikeFactory(
+            user = cls.user2,
+            liked = cls.tweet3
+        )
+
+        cls.userlike3 = UserLikeFactory(
+            user = cls.user1,
+            liked = cls.tweet2
+        )
+
+        cls.media1 = TweetMediaFactory(
+            media = [],
+            tweet = cls.tweet2
+        )
+
+        cls.media2 = TweetMediaFactory(
+            media = [],
+            tweet = cls.tweet8
+        )
+
+    def test_get_user_likes_nonexistent_user(self):
+
+        response = self.client.get(
+            '/api/v1/usertweets/user4_id/tweets/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        response = self.client.get(
+            '/api/v1/usertweets/user4_id/tweets_replies/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        response = self.client.get(
+            '/api/v1/usertweets/user4_id/media/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        response = self.client.get(
+            '/api/v1/usertweets/user4_id/likes/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # GET /api/v1/usertweets/{user_id}/tweets/
+    def test_get_usertweets_tweets_success(self):
+        response = self.client.get(
+            '/api/v1/usertweets/user1_id/tweets/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()['results']
+
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], data)),
+        ['user1_id', 'user3_id', 'user1_id', 'user1_id'])
+        self.assertEqual(list(map(lambda x:x['tweet_type'], data)),
+        ['GENERAL', 'RETWEET', 'GENERAL', 'GENERAL'])
+        self.assertEqual(list(map(lambda x:x['content'], data)),
+        ['content4 quoted', 'content3', 'content2', 'content1'])
+
+
+    # GET /api/v1/usertweets/{user_id}/tweets_replies/
+    def test_get_usertweets_tweets_replies_success(self):
+        response = self.client.get(
+            '/api/v1/usertweets/user1_id/tweets_replies/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()['results']
+
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], data)),
+        ['user1_id', 'user1_id', 'user1_id', 'user3_id', 'user1_id', 'user1_id'])
+        self.assertEqual(list(map(lambda x:x['tweet_type'], data)),
+        ['REPLY', 'REPLY', 'GENERAL', 'RETWEET', 'GENERAL', 'GENERAL'])
+        self.assertEqual(list(map(lambda x:x['content'], data)),
+        ['reply2', 'reply1', 'content4 quoted', 'content3', 'content2', 'content1'])
+
+
+    # GET /api/v1/usertweets/{user_id}/media/
+    def test_get_usertweets_media_success(self):
+        response = self.client.get(
+            '/api/v1/usertweets/user1_id/media/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()['results']
+
+        self.assertEqual(list(map(lambda x:x['content'], data)),
+        ['reply2', 'content2'])
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], data)),
+        ['user1_id', 'user1_id'])
+        self.assertEqual(list(map(lambda x:x['tweet_type'], data)),
+        ['REPLY', 'GENERAL'])
+        
+
+        response = self.client.get(
+            '/api/v1/usertweets/user3_id/media/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()['results']
+
+        self.assertEqual(data, [])
+
+    # GET /api/v1/usertweets/{user_id}/likes/
+    def test_get_usertweets_likes_success(self):
+        response = self.client.get(
+            '/api/v1/usertweets/user1_id/likes/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()['results']
+
+        self.assertEqual(list(map(lambda x:x['author']['user_id'], data)),
+        ['user1_id', 'user3_id'])
+        self.assertEqual(list(map(lambda x:x['tweet_type'], data)),
+        ['GENERAL', 'GENERAL'])
+        self.assertEqual(list(map(lambda x:x['content'], data)),
+        ['content2', 'content3'])
+
+        response = self.client.get(
+            '/api/v1/usertweets/user3_id/likes/',
+            data={},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.user1_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()['results']
+
+        self.assertEqual(data, [])
