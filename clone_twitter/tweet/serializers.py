@@ -4,10 +4,44 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from notification.views import mention, notify, notify_all
+from notification.models import Mention, Notification
 from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia, Quote
 from user.models import ProfileMedia
 User = get_user_model()
+
+def mention(user_id, tweet):
+    try:
+        user = User.objects.get(user_id=user_id)
+        mention = Mention.objects.create(tweet=tweet, user=user)
+        return mention
+    except User.DoesNotExist:
+        return None
+    except IntegrityError:
+        return None
+
+
+def notify(me, user_id, tweet, noti_type):
+    if me.user_id == user_id:
+        return None
+    try:
+        notified = User.objects.get(user_id=user_id)
+        notification = Notification.objects.create(noti_type=noti_type, user=me, tweet=tweet, notified=notified)
+        return notification
+    except User.DoesNotExist:
+        return None
+    except IntegrityError:
+        return None
+
+
+def notify_all(me, tweet, noti_type, replying=None):
+    author_id = tweet.author.user_id
+    mentioned_list = [x.user.user_id for x in tweet.mentions.all()]
+    if replying:
+        tweet = replying
+    notify(me, author_id, tweet, noti_type)
+    for mentioned in mentioned_list:
+        notify(me, mentioned, tweet, noti_type)
+
 
 class UserSerializer(serializers.ModelSerializer):
     profile_img = serializers.SerializerMethodField()
@@ -545,3 +579,7 @@ class HomeSerializer(serializers.Serializer):
 
         data.append(pagination_info)
         return data
+
+
+class SearchSerializer(serializers.Serializer):
+    query = serializers.CharField(help_text="search keywords", required=True)
