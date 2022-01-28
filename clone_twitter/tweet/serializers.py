@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from notification.serializers import mention, notify
+from notification.views import mention, notify, notify_all
 from tweet.models import Tweet, Reply, Retweet, UserLike, TweetMedia, Quote
 from user.models import ProfileMedia
 User = get_user_model()
@@ -135,6 +135,7 @@ class TweetSerializer(serializers.ModelSerializer):
 
     author = UserSerializer(read_only=True)
     media = serializers.SerializerMethodField()
+    retweeting_user_name = serializers.SerializerMethodField()
     replies = serializers.SerializerMethodField()
     retweets = serializers.SerializerMethodField()
     user_retweet = serializers.SerializerMethodField()
@@ -145,6 +146,12 @@ class TweetSerializer(serializers.ModelSerializer):
         media = tweet.media.all()
         serializer = MediaSerializer(media, many=True)
         return serializer.data
+
+    def get_retweeting_user_name(self, tweet):
+        if tweet.tweet_type != 'RETWEET':
+            return ''
+        retweeting_user = User.objects.get(user_id=tweet.retweeting_user)
+        return retweeting_user.username
 
     def get_replies(self, tweet):
         if tweet.tweet_type == 'RETWEET':
@@ -178,6 +185,53 @@ class TweetSerializer(serializers.ModelSerializer):
             tweet = tweet.retweeting.all()[0].retweeted
         user_like = tweet.liked_by.filter(user=me).count()
         return user_like == 1
+
+
+class TweetSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tweet
+        exclude = ['created_at']
+
+    author = UserSerializer(read_only=True)
+    replies = serializers.SerializerMethodField()
+    retweets = serializers.SerializerMethodField()
+    user_retweet = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
+    user_like = serializers.SerializerMethodField()
+
+    def get_replies(self, tweet):
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+        return tweet.replied_by.all().count()
+
+    def get_retweets(self, tweet):
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+        return tweet.retweeted_by.all().count() + tweet.quoted_by.all().count()
+
+    def get_user_retweet(self, tweet):
+        me = self.context['request'].user
+        if me.is_anonymous:
+            return False
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+        user_retweet = tweet.retweeted_by.filter(user=me).count()
+        return user_retweet == 1
+
+    def get_likes(self, tweet):
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+        return tweet.liked_by.all().count()
+
+    def get_user_like(self, tweet):
+        me = self.context['request'].user
+        if me.is_anonymous:
+            return False
+        if tweet.tweet_type == 'RETWEET':
+            tweet = tweet.retweeting.all()[0].retweeted
+        user_like = tweet.liked_by.filter(user=me).count()
+        return user_like == 1
+
 
 class TweetSearchInfoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -354,7 +408,7 @@ class ReplySerializer(serializers.Serializer):
                 mention(x[1:], replying)
                 notify(author, x[1:], replying, 'MENTION')
         mention(reply_to, replying)
-        notify(author, reply_to, replying, 'REPLY')
+        notify_all(author, replied, 'REPLY', replying)
 
         return True
 
@@ -391,7 +445,7 @@ class RetweetSerializer(serializers.Serializer):
             if media is not None:
                 tweet_media = TweetMedia.objects.create(media=media.media, tweet=retweeting)
 
-        notify(me, author.user_id, retweeting, 'RETWEET')
+        notify_all(me, retweeted, 'RETWEET')
 
         return True
 
@@ -456,7 +510,7 @@ class LikeSerializer(serializers.Serializer):
         me = self.context['request'].user
         user_like = UserLike.objects.create(user=me, liked=liked)
 
-        notify(me, liked.author.id, liked, "LIKE")
+        notify_all(me, liked, 'LIKE')
 
         return True
 

@@ -1,12 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-
-from tweet.views import TweetPostView, ReplyView, RetweetView, TweetDetailView, LikeView, HomeView, RetweetCancelView, UnlikeView, ThreadViewSet, QuoteView, TweetSearchViewSet
+from notification.views import NotificationView
 
 router = SimpleRouter()
 
 
 urlpatterns = [
+    path('notification/', NotificationView.as_view(), name='notification'),                    # /api/v1/notification/
     path('', include(router.urls))
 ]
