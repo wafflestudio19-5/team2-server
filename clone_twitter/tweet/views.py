@@ -1,4 +1,4 @@
-from urllib.parse import unquote
+from urllib.parse import unquote, unquote_plus
 import re
 from user.models import User
 import tweet.paginations
@@ -330,7 +330,7 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
     def get_top(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = list(filter(lambda x: x!='', unquote(request.query_params['query']).split('+')))
+        search_keywords = list(filter(lambda x: x!='', unquote_plus(request.query_params['query']).split(' ')))
 
 
         sorted_queryset = \
@@ -364,7 +364,7 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
     def get_latest(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = list(filter(lambda x: x!='', unquote(request.query_params['query']).split('+')))
+        search_keywords = list(filter(lambda x: x!='', unquote_plus(request.query_params['query']).split(' ')))
 
         sorted_queryset = \
             Tweet.objects.all() \
