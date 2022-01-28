@@ -2,13 +2,8 @@ import json
 from multiprocessing.sharedctypes import Value
 import re
 from django.test import tag
-<<<<<<< HEAD
-=======
-from rest_framework_jwt.authentication import JSONWebTokenAuthentication
-from django.core.mail import EmailMessage
 
-import twitter.settings
->>>>>>> Feat: custom authentication and email verification
+import twitter
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -17,7 +12,6 @@ from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
@@ -37,6 +31,7 @@ from django.utils.encoding import force_bytes
 from django.core.mail import EmailMessage
 from twitter.utils import account_activation_token, active_message
 from django.utils.encoding import force_bytes, force_text
+from .tasks import send_email_task
 
 # Create your views here.
 
@@ -89,7 +84,7 @@ class EmailSignUpView(APIView):   #signup with email
 
 class UserLoginView(APIView): #login with user_id
     permission_classes = (permissions.AllowAny, )
-
+    authentication_classes = (CustomJWTAuthentication, )
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
@@ -538,9 +533,10 @@ class SearchPeopleView(APIView, UserListPagination):
 DOMAIN = get_secret("DOMAIN")
 class SignupEmailSendView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
+    # authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
 
     def post(self, request):
+        # TODO exception when email = null or target_email is someone other's email
         target_email = request.data.get('email', None)
         user = request.user
         domain = "127.0.0.1:8000" if twitter.settings.DEBUG else DOMAIN
@@ -551,20 +547,20 @@ class SignupEmailSendView(APIView):
         mail_to = user.email  # default: user's email
         if target_email is not None:
             mail_to = target_email
-        email = EmailMessage(mail_title, message_data, to=[mail_to])
-        email.send()
+
+        send_email_task.delay(mail_title, message_data, mail_to) # celery task
         return Response({"message": "email sent to user"}, status=status.HTTP_200_OK)
 
 class EmailActivateView(APIView):
     permission_classes = (permissions.AllowAny,)
-    authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
+    # authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
 
     def get(self, request, uidb64=None, token=None):
         try:
             uid = force_text(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)
             if user is not None and account_activation_token.check_token(user, token):
-                User.objects.filter(pk=uid).update(is_active=True)
+                User.objects.filter(pk=uid).update(is_verified=True)
                 return Response({"message": "email verification success"}, status=status.HTTP_200_OK)  # TODO Q front redirect?
             return Response({"message": "AUTH_FAIL"}, status=status.HTTP_400_BAD_REQUEST)
 

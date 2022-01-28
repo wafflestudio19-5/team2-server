@@ -59,7 +59,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{4}-[\d]{4}")  # another option: 1)validation with drf 2)external library
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)
 
-    header_img = models.ImageField(null=True, blank=True, upload_to=profile_media_path)
+
+    header_img = models.ImageField(null=True, blank=True, upload_to=profile_media_path) # TODO change
+
+    is_verified = models.BooleanField(default=False)
 
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)

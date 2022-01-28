@@ -87,7 +87,7 @@ class UserLoginSerializer(serializers.Serializer):
         user = authenticate(user_id=user_id, password=password)
 
         if user is None:
-            raise serializers.ValidationError("user id of password is wrong.")
+            raise serializers.ValidationError("user id or password is wrong.")
 
         update_last_login(None, user)
         return {
