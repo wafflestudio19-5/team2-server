@@ -51,3 +51,14 @@ class NotificationView(APIView):
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class NotificationCountView(APIView):
+    permission_classes = (permissions.IsAuthenticated, )
+
+    def get(self, request):
+        me = request.user
+        notification_count = me.notified.filter(is_read=False).count()
+        data = {'notification_count': notification_count}
+
+        return Response(data=data, status=status.HTTP_200_OK)
