@@ -14,7 +14,7 @@ from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q, Count
 from user.models import Follow, User, SocialAccount, ProfileMedia
 import requests
@@ -293,9 +293,8 @@ class KakaoCallbackView(APIView):
             return response
 
         # case 2. new user signup with kakao (might use profile info)
-        else:  #TODO exception duplicate email
-            random_id = unique_random_id_generator(User.objects)
-            fake_email = unique_random_email_generator(User.objects)
+        else:
+            random_id = unique_random_id_generator(User)
 
             if email and User.objects.filter(email=email).exists():
                 url = FRONT_URL + "oauth/callback/kakao/?code=null" + "&message=duplicate email"
@@ -344,6 +343,7 @@ class KakaoUnlinkView(APIView): # deactivate
 
         if not unlinked_user_id:
             return Response({'message': "failed to get unlinked user_id"}, status=status.HTTP_400_BAD_REQUEST)
+
         # 3. delete related social account object
         kakao_account = SocialAccount.objects.get(account_id=kakao_id)
         me = kakao_account.user
@@ -396,9 +396,11 @@ class GoogleCallbackView(APIView):
 
         # TODO exception
         google_id = user_info_response.get("sub")
-        username = user_info_response.get("name")
+        username = user_info_response.get("given_name")
         email = user_info_response.get("email", None)
         profile_img_url = user_info_response.get("picture")
+        if len(profile_img_url) > 200:
+            profile_img_url = ProfileMedia.default_profile_img
 
         # 3. connect google account - user
         # case 1. user who has signed up with google account trying to login
@@ -412,26 +414,28 @@ class GoogleCallbackView(APIView):
 
         # case 2. new user signup with google (might use profile info)
         else:
-            random_id = unique_random_id_generator()
+            random_id = unique_random_id_generator(User)
 
             if email and User.objects.filter(email=email).exists():
                 url = FRONT_URL + "oauth/callback/google/?code=null" + "&message=duplicate email"
                 response = redirect(url)
                 return response
 
-            user = User(user_id=random_id, email=email, username=username)
-            user.set_unusable_password()  # user signed up with google can only login via kakao login
-            user.save()
-            profile_media = ProfileMedia(image_url=profile_img_url)
-            profile_media.user = user
-            profile_media.save()
+            with transaction.atomic():
+                user = User(user_id=random_id, email=email, username=username)
+                user.set_unusable_password()  # user signed up with google can only login via kakao login
+                user.save()
+                profile_media = ProfileMedia(image_url=profile_img_url)
+                profile_media.user = user
+                profile_media.save()
 
-            google_account = SocialAccount.objects.create(account_id=google_id, type='google', user=user)
-            token = jwt_token_of(user)
-            url = FRONT_URL + "oauth/callback/google/?code=" + token + "&user_id=" + user.user_id
-            response = redirect(url)
-            return response
-
+            if user is not None:
+                google_account = SocialAccount.objects.create(account_id=google_id, type='google', user=user)
+                token = jwt_token_of(user)
+                url = FRONT_URL + "oauth/callback/google/?code=" + token + "&user_id=" + user.user_id
+                response = redirect(url)
+                return response
+            return redirect(FRONT_URL + "oauth/callback/google/?code=null" + "&message=creation failed")
 
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
     queryset = User.objects.all().reverse()
