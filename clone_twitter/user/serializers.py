@@ -349,6 +349,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         instance.user_id = validated_data.get('user_id', instance.user_id)
+        instance.save()
         return instance
 
       
