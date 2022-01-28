@@ -1,5 +1,6 @@
 import json
 from multiprocessing.sharedctypes import Value
+import re
 from django.test import tag
 
 import user.paginations
@@ -478,7 +479,8 @@ class SearchPeopleView(APIView, UserListPagination):
     def get(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = request.query_params['query'].split() 
+        search_keywords = request.query_params['query']
+        search_keywords = re.split('%%20|+', search_keywords) 
         tag_keywords = ['']
         
 
