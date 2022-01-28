@@ -1,6 +1,7 @@
 import json
 from multiprocessing.sharedctypes import Value
 import re
+from urllib.parse import unquote
 from django.test import tag
 
 import twitter
@@ -500,8 +501,7 @@ class SearchPeopleView(APIView, UserListPagination):
     def get(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = request.query_params['query']
-        search_keywords = list(filter(lambda x: x != '', re.split(r'%20|\+', search_keywords)))
+        search_keywords = list(filter(lambda x: x!='', unquote(request.query_params['query']).split('+')))
         tag_keywords = ['']
 
         for k in range(len(search_keywords)):
