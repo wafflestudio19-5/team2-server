@@ -600,30 +600,34 @@ class VerifySMSView(APIView):
             return Response({"message": "sms verification success"}, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'wrong code'})
 
-    def make_signature(self, access_key, secret_key, method, uri, timestamp):
+    @staticmethod
+    def make_signature(access_key, secret_key, method, uri, timestamp):
         secret_key = bytes(secret_key, 'UTF-8')
         message = method + " " + uri + "\n" + timestamp + "\n" + access_key
+        message = bytes(message, 'UTF-8')
         signingKey = base64.b64encode(hmac.new(secret_key, message, digestmod=hashlib.sha256).digest())
         return signingKey
 
+
     def send_sms(self, phone_number, auth_code):
         timestamp = str(int(time.time() * 1000))
-        sms_uri = f'/sms/v2/services/{SERVICE_ID}/messages'
-        signature = self.make_signature(ACCESS_KEY, NAVER_SECRET, 'POST', sms_uri, timestamp)
-        url = f'https://api-sens.ncloud.com/v2/sms/services/{SERVICE_ID}/messages/'
+        uri = f'/sms/v2/services/{SERVICE_ID}/messages'
+        signature = VerifySMSView.make_signature(ACCESS_KEY, NAVER_SECRET, 'POST', uri, timestamp)
+        url = f'https://sens.apigw.ntruss.com/sms/v2/services/{SERVICE_ID}/messages'
+
         data = {
-            {
-                "type": "SMS",
-                "from": TEAM2_PHONE,
-                "content": f"[Team2] WaffleTwitter 인증 번호 [{auth_code}]를 입력해주세요.",
-                "messages": [{"to": phone_number, }]
-            }
+            "type": "SMS",
+            "from": TEAM2_PHONE,
+            "content": f"[Team2] WaffleTwitter 인증 번호 [{auth_code}]를 입력해주세요.",
+            "messages": [{"to": phone_number}]
         }
+
         headers = {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=utf-8',
             'x-ncp-apigw-timestamp': timestamp,
             'x-ncp-iam-access-key': ACCESS_KEY,
-            'x-ncp-apigw-signature-v2': signature
+            'x-ncp-apigw-signature-v2': signature,
         }
         response = requests.post(url, json=data, headers=headers)
+        response = response.json()
         return response['statusName']
