@@ -4,11 +4,12 @@ from rest_framework.routers import SimpleRouter
 from user.views import PingPongView, EmailSignUpView, SearchPeopleView, UserInfoViewSet, UserLoginView, TokenVerifyView,\
     UserFollowView, UserUnfollowView, FollowListViewSet, KakaoCallbackView, KaKaoSignInView, \
     UserRecommendView, FollowRecommendView, UserDeactivateView, KakaoUnlinkView, SignupEmailSendView, EmailActivateView, \
-    GoogleSignInView, GoogleCallbackView, VerifySMSView
+    GoogleSignInView, GoogleCallbackView, VerifySMSViewSet
 
 router = SimpleRouter()
 router.register('follow_list', FollowListViewSet, basename='follow_list')  # /api/v1/follow_list/
 router.register('user', UserInfoViewSet, basename='user') # /api/v1/user/
+router.register('verification', VerifySMSViewSet, basename='verification')   # /api/v1/verification/
 
 urlpatterns = [
     path('ping/', PingPongView.as_view(), name='ping'),  # /api/v1/ping/
@@ -27,6 +28,5 @@ urlpatterns = [
     path('search/people/', SearchPeopleView.as_view(), name='search-people'), # /api/v1/search/people/
     path('google/signup/', GoogleSignInView.as_view(), name='google-signup'),
     path('google/callback/', GoogleCallbackView.as_view(), name='google-callback'),
-    path('verification/sms/', VerifySMSView.as_view(), name='verfiy-sms'),
     path('', include(router.urls))
 ]

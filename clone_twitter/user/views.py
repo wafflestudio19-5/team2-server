@@ -574,13 +574,21 @@ NAVER_SECRET = get_secret("NAVER_SECRET")
 TEAM2_PHONE = get_secret("TEAM2_PHONE")
 SERVICE_ID = get_secret("SERVICE_ID")
 
-class VerifySMSView(APIView):
+class VerifySMSViewSet(viewsets.GenericViewSet):
 
-    def post(self, request):
+    @action(detail=False, methods=['POST', 'PUT'], url_path='sms', url_name='sms')
+    def verify_sms(self, request):
+        if request.method == 'POST':
+            return self.send_code(request)
+        elif request.method == 'PUT':
+            return self.check_code(request)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def send_code(self, request):
         user = request.user
         target_phone_num = user.phone_number
         truncated_p_num = target_phone_num.replace('-', '')
-        code, created = AuthCode.objects.update_or_create(phone_number=target_phone_num)
+        code, created = AuthCode.objects.update_or_create(phone_number=target_phone_num)  #TODO same person cannot
         auth_code = code.auth_code
         result = self.send_sms(truncated_p_num, auth_code)
 
@@ -588,9 +596,10 @@ class VerifySMSView(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to send SMS'})
         return Response(status=status.HTTP_200_OK, data={'message': 'SMS sent to user'})
 
-    def get(self, request):
-        phone_number = request.GET.get('phone_number', None)
-        submitted_code = request.GET.get('auth_code', None)
+    def check_code(self, request):
+        phone_number = request.data.get('phone_number', None)
+        submitted_code = request.data.get('auth_code', None)
+
         if not phone_number or not submitted_code:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'missing query params'})
 
@@ -600,10 +609,10 @@ class VerifySMSView(APIView):
             return Response({"message": "sms verification success"}, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'wrong code'})
 
-    @staticmethod
-    def make_signature(access_key, secret_key, method, uri, timestamp):
-        secret_key = bytes(secret_key, 'UTF-8')
-        message = method + " " + uri + "\n" + timestamp + "\n" + access_key
+
+    def make_signature(self, uri, timestamp):
+        secret_key = bytes(NAVER_SECRET, 'UTF-8')
+        message = "POST " + uri + "\n" + timestamp + "\n" + ACCESS_KEY
         message = bytes(message, 'UTF-8')
         signingKey = base64.b64encode(hmac.new(secret_key, message, digestmod=hashlib.sha256).digest())
         return signingKey
@@ -612,21 +621,28 @@ class VerifySMSView(APIView):
     def send_sms(self, phone_number, auth_code):
         timestamp = str(int(time.time() * 1000))
         uri = f'/sms/v2/services/{SERVICE_ID}/messages'
-        signature = VerifySMSView.make_signature(ACCESS_KEY, NAVER_SECRET, 'POST', uri, timestamp)
         url = f'https://sens.apigw.ntruss.com/sms/v2/services/{SERVICE_ID}/messages'
 
         data = {
             "type": "SMS",
-            "from": TEAM2_PHONE,
+            "contentType": "COMM",
+            "countryCode": "82",
+            "from": "01099713633",
             "content": f"[Team2] WaffleTwitter 인증 번호 [{auth_code}]를 입력해주세요.",
-            "messages": [{"to": phone_number}]
+            "messages": [
+                {
+                    "to": phone_number,
+                    "subject": "string",
+                    "content": "",
+                }
+            ],
         }
 
         headers = {
-            'Content-Type': 'application/json; charset=utf-8',
-            'x-ncp-apigw-timestamp': timestamp,
-            'x-ncp-iam-access-key': ACCESS_KEY,
-            'x-ncp-apigw-signature-v2': signature,
+            "Content-Type": 'application/json; charset=utf-8',
+            "x-ncp-apigw-timestamp": timestamp,
+            "x-ncp-iam-access-key": ACCESS_KEY,
+            "x-ncp-apigw-signature-v2": self.make_signature(uri, timestamp),
         }
         response = requests.post(url, json=data, headers=headers)
         response = response.json()
