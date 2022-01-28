@@ -871,7 +871,7 @@ class GetSearchPeopleTestCase(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(list(map(lambda x:x['user_id'], response.json()['results'])),
-        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'kk', 'test1'])
+        ['test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test1', 'test3', 'kk', 'test2'])
 
     # Several Keywords with those including @ sign
     def test_get_search_people_with_atsign(self):
@@ -883,4 +883,4 @@ class GetSearchPeopleTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(list(map(lambda x:x['user_id'], response.json()['results'])),
-        ['kk', 'tt', 'test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test3', 'test2', 'test1'])
+        ['kk', 'tt', 'test9', 'test8ee', 'test7', 'test6', 'test5', 'test4', 'test1', 'test3', 'test2'])

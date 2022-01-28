@@ -176,12 +176,17 @@ class TweetSearchInfoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     author = UserSerializer(read_only=True)
+    media = serializers.SerializerMethodField()
     replies = serializers.SerializerMethodField()
     retweets = serializers.SerializerMethodField()
     user_retweet = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
     user_like = serializers.SerializerMethodField()
     
+    def get_media(self, tweet):
+        media = tweet.media.all()
+        serializer = MediaSerializer(media, many=True)
+        return serializer.data
 
     def get_replies(self, tweet):
         return tweet.replied_by.all().count()
