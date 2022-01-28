@@ -158,7 +158,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 ACCOUNT_DEFAULT_HTTP_PROTOCOL='https'  # for https social login redirect
 
 # Static files (CSS, JavaScript, Images)
