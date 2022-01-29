@@ -1,3 +1,4 @@
+import datetime
 from io import BytesIO
 
 from django.utils.timezone import now
@@ -25,23 +26,9 @@ class CustomUserManager(BaseUserManager):
     use_in_migrations = True
     # TODO change to create user with only email / phone-number
     def _create_user(self, user_id, password, **extra_fields):
-        # if not email:
-        #    raise ValueError('이메일을 설정해주세요.')
-        # if email:  # changed
-        #    email = self.normalize_email(email)
-        img = extra_fields.pop('profile_img', None)  # url(kakao) / file
-        url = extra_fields.pop('kakao_profile', None)
-        is_social = extra_fields.pop('is_social', False)
         user = self.model(user_id=user_id, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
-
-        profile_media = ProfileMedia(user=user)
-        if is_social:
-            profile_media.img_url = url
-        elif img:
-            profile_media.media = img
-        profile_media.save()
 
         return user
 
@@ -75,13 +62,15 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # profile related fields
     # profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
-    header_img = models.ImageField(null=True, blank=True, upload_to=header_media_path)
+
+    header_img = models.ImageField(null=True, blank=True, upload_to=profile_media_path) # TODO change
+
+    is_verified = models.BooleanField(default=False)
+
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
-    # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
     allow_notification = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    # Q. lanaguage, url field?
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
@@ -115,3 +104,29 @@ class ProfileMedia(models.Model):
     media = models.ImageField(upload_to=header_media_path)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_img')
     image_url = models.URLField(default=default_profile_img) #only used for social login user / default image
+
+class AuthCode(models.Model):
+    last_update = models.DateTimeField(auto_now=True)
+    phone_number = models.CharField(max_length=14, unique=True, null=True)
+    email = models.EmailField(max_length=100, unique=True, null=True)
+    auth_code = models.PositiveIntegerField()
+
+    def save(self, *args, **kwargs):
+        self.auth_code = randint(1000, 10000)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def check_sms_code(cls, phone_number, submitted_code):
+        time_limit = now() - datetime.timedelta(minutes=5)
+        result = cls.objects.filter(phone_number=phone_number, auth_code=submitted_code, last_update__gte=time_limit)
+        if result.exists():
+            return True
+        return False
+
+    @classmethod
+    def check_email_code(cls, email, submitted_code):
+        time_limit = now() - datetime.timedelta(minutes=5)
+        result = cls.objects.filter(email=email, auth_code=submitted_code, last_update__gte=time_limit)
+        if result.exists():
+            return True
+        return False

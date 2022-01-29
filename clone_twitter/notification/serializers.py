@@ -15,6 +15,8 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def get_written_by_me(self, notification):
         tweet = notification.tweet
+        if tweet is None:
+            return False
         author = tweet.author
         me = self.context['request'].user
 
@@ -26,7 +28,10 @@ class NotificationListSerializer(serializers.Serializer):
 
     def get_notifications(self, me):
         request = self.context['request']
-        notifications = me.notified.select_related('tweet').all().order_by('-created_at')
+        if self.context['mention']:
+            notifications = me.notified.select_related('tweet').filter(noti_type='MENTION').order_by('-created_at')
+        else:
+            notifications = me.notified.select_related('tweet').all().order_by('-created_at')
         notification, previous_page, next_page = custom_paginator(notifications, 10, request)
         serializer = NotificationSerializer(notification, context={'request': request}, many=True)
         data = serializer.data
