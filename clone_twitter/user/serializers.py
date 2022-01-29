@@ -253,12 +253,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return ProfileMedia.default_profile_img
         return profile_img.media.url if profile_img.media else profile_img.image_url
       
-    def update(self, instance, validated_data):
-        super().update(instance, validated_data)
-        instance.profile_img.media = validated_data.get('profile_img', None)
-        instance.profile_img.save()
-        instance.save()
-        return instance
+    def update(self, me, validated_data):
+        super().update(me, validated_data)
+        media = self.context['request'].FILES.get('profile_img')
+        if media is None:
+            return me
+        try:
+            profile_media = me.profile_img.get()
+            profile_media.media = media
+            profile_media.save()
+        except ProfileMedia.DoesNotExist:
+            ProfileMedia.objects.create(media=media, user=me)
+
+        return me
 
 class UserInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)

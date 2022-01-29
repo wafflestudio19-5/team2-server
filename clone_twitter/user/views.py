@@ -382,10 +382,9 @@ class UserInfoViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['patch'], url_path='profile', url_name='profile')
     def patch_profile(self, request):
         user = request.user
-
         serializer = UserProfileSerializer(user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid(raise_exception=True):
-            serializer.save()
+            user = serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
