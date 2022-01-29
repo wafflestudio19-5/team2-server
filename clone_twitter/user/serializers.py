@@ -226,7 +226,7 @@ class UserRecommendSerializer(serializers.ModelSerializer):
         return profile_img.media.url if profile_img.media else profile_img.image_url
           
 class UserProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField()
+    username = serializers.CharField(max_length=50)
     bio = serializers.CharField(allow_blank=True)
     birth_date =serializers.DateField(allow_null=True)
     i_follow = serializers.SerializerMethodField()
@@ -256,14 +256,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
         except ProfileMedia.DoesNotExist:
             return ProfileMedia.default_profile_img
         return profile_img.media.url if profile_img.media else profile_img.image_url
-
-    def get_header_img(self, obj):
-        try:
-            header_img = obj.profile_img.get()
-        except ProfileMedia.DoesNotExist:
-            return ProfileMedia.default_header_img
-        return header_img.media.url if header_img.media else header_img.image_url
       
+    def update(self, instance, validated_data):
+        super().update(instance, validated_data)
+        instance.profile_img.media = validated_data.get('profile_img', None)
+        instance.profile_img.save()
+        instance.save()
+        return instance
+
 class UserInfoSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=50)
     user_id = serializers.CharField(min_length=4, max_length=15, validators= [UniqueValidator(queryset=User.objects.all())])

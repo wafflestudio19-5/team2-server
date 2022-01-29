@@ -75,7 +75,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # profile related fields
     # profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
-    header_img = models.ImageField(null=True, blank=True, upload_to=profile_media_path)
+    header_img = models.ImageField(null=True, blank=True, upload_to=header_media_path)
     bio = models.CharField(max_length=255, blank=True)
     birth_date = models.DateField(null=True)
     # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
