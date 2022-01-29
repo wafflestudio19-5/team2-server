@@ -4,15 +4,17 @@ import re
 from urllib.parse import unquote_plus
 from django.test import tag
 
+import twitter
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
+
+from tweet.serializers import SearchSerializer
 from twitter.utils import unique_random_id_generator, unique_random_email_generator
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, permissions, viewsets
 from rest_framework.views import Response, APIView
 from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
@@ -22,32 +24,54 @@ from user.models import Follow, User, SocialAccount, ProfileMedia
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
-# Create your views here.
+from twitter.authentication import CustomJWTAuthentication
+
+# for email
+from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.core.mail import EmailMessage
+from twitter.utils import account_activation_token, active_message
+from django.utils.encoding import force_bytes, force_text
+from .tasks import send_email_task
+
 
 class PingPongView(APIView):
     permission_classes = (permissions.AllowAny,)
 
-    swagger_auto_schema(request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'ping': openapi.Schema(type=openapi.TYPE_STRING, description='ping'),
-        }
-    ))
+    responses = {
+        200: 'Ping Pong',
+        404: 'Not found',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Ping Pong"], responses=responses)
 
     def get(self, request):
         return Response(data={'ping': 'pong'}, status=status.HTTP_200_OK)
 
+
 class TokenVerifyView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
+
+    responses = {
+        200: 'Ping Pong',
+        401: 'Unauthorized user',
+        404: 'Not found',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Login"], responses=responses)
 
     def get(self, request):
         return Response(data={'is_valid_token': True}, status=status.HTTP_200_OK)
 
+
 class EmailSignUpView(APIView):   #signup with email
     permission_classes = (permissions.AllowAny, )
-    # parser_classes = [JSONParser]
 
-    @swagger_auto_schema(request_body=openapi.Schema(  #TODO check format
+    request_body = openapi.Schema(  #TODO check format
         type=openapi.TYPE_OBJECT,
         properties={
             'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
@@ -59,7 +83,16 @@ class EmailSignUpView(APIView):   #signup with email
             'bio': openapi.Schema(type=openapi.TYPE_STRING, description='bio'),
             'birth_date': openapi.Schema(type=openapi.FORMAT_DATETIME, description='birth_date'),
         }
-    ))
+    )
+    responses = {
+        201: 'Successfully create account',
+        400: 'Invalid input data',
+        405: 'Method not allowed: only POST',
+        409: 'Conflict: cannot create account',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Account"], request_body=request_body, responses=responses)
 
     def post(self, request, *args, **kwargs):
 
@@ -72,16 +105,25 @@ class EmailSignUpView(APIView):   #signup with email
             return Response(status=status.HTTP_409_CONFLICT, data={"message": "unexpected db error"})
         return Response({'token': jwt_token, 'user_id': user.user_id}, status=status.HTTP_201_CREATED)
 
+
 class UserLoginView(APIView): #login with user_id
     permission_classes = (permissions.AllowAny, )
 
-    @swagger_auto_schema(request_body=openapi.Schema(
+    request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
             'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
             'password': openapi.Schema(type=openapi.TYPE_STRING, description='password'),
         }
-    ))
+    )
+    responses = {
+        200: 'Successfully login',
+        400: 'Invalid input data',
+        405: 'Method not allowed: only POST',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Login"], request_body=request_body, responses=responses)
 
     def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
@@ -92,8 +134,25 @@ class UserLoginView(APIView): #login with user_id
 
 # TODO: Logout.. expire token and add blacklist.. ?
 
+
 class UserDeactivateView(APIView): # deactivate
     permission_classes = (permissions.IsAuthenticated, )
+
+    request_body = openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'password': openapi.Schema(type=openapi.TYPE_STRING, description='password'),
+        }
+    )
+    responses = {
+        200: 'Successfully deactivate account',
+        400: 'Invalid input data',
+        401: 'Unauthorized',
+        405: 'Method not allowed: only POST',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Account"], request_body=request_body, responses=responses)
 
     def post(self, request):
         me = request.user
@@ -113,15 +172,26 @@ class UserDeactivateView(APIView): # deactivate
         user.delete()
         return Response({'success': True}, status=status.HTTP_200_OK)
 
+
 class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
     permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
 
-    @swagger_auto_schema(request_body=openapi.Schema(
+    request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
             'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
         }
-    ))
+    )
+    responses = {
+        201: 'Successfully follow user',
+        400: 'Invalid input data',
+        401: 'Unauthorized',
+        405: 'Method not allowed: only POST',
+        409: 'Conflict: already follows this user',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Follow"], request_body=request_body, responses=responses)
 
     def post(self, request):
         serializer = FollowSerializer(data=request.data, context={'request': request})
@@ -132,15 +202,20 @@ class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using 
             return Response(status=status.HTTP_409_CONFLICT, data={'message':'user already follows followee'})
         return Response(status=status.HTTP_201_CREATED) #TODO: recommend user
 
+
 class UserUnfollowView(APIView):
     permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
 
-    @swagger_auto_schema(request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
-        }
-    ))
+
+    responses = {
+        200: 'Successfully unfollow user',
+        401: 'Unauthorized',
+        404: 'Not found: no such user exists or not following this user',
+        405: 'Method not allowed: only DELETE',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Follow"], responses=responses)
 
     def delete(self, request, user_id=None):  # unfollow/{target_id}/
         target_id = user_id
@@ -156,11 +231,22 @@ class UserUnfollowView(APIView):
         follow_relation.delete()
         return Response(status=status.HTTP_200_OK, data='successfully unfollowed')
 
+
 class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Follow.objects.all()
     serializer_class = UserFollowSerializer
     permission_classes = (permissions.IsAuthenticated,)
     pagination_class = user.paginations.UserListPagination
+
+    responses = {
+        200: UserFollowSerializer,
+        401: 'Unauthorized user',
+        404: 'Not found: no such user',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Follow List"], responses=responses)
 
     # GET /api/v1/follow_list/{lookup}/follower/
     @action(detail=True, methods=['GET'])
@@ -176,6 +262,16 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(followers, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    responses = {
+        200: UserFollowSerializer,
+        401: 'Unauthorized user',
+        404: 'Not found: no such user',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Follow List"], responses=responses)
+
     # GET /api/v1/follow_list/{lookup}/following/
     @action(detail=True, methods=['GET'])
     def following(self, request, pk=None):
@@ -190,9 +286,21 @@ class FollowListViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = UserFollowingSerializer(followings, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class UserInfoViewSet(viewsets.GenericViewSet):
     serializer_class = UserInfoSerializer
+    queryset = User.objects.all()
     permission_classes = (permissions.AllowAny,)
+
+    responses = {
+        200: UserInfoSerializer,
+        401: 'Unauthorized user',
+        404: 'Not found: no such user',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Profile"], responses=responses)
 
     # GET /user/{user_user_id}/
     def retrieve(self, request, pk=None):
@@ -204,6 +312,22 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    request_body = openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
+        }
+    )
+    responses = {
+        200: UserInfoSerializer,
+        400: 'Invalid input data',
+        401: 'Unauthorized',
+        405: 'Method not allowed: only PATCH',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Profile"], request_body=request_body, responses=responses)
+
     # PATCH /user/id/
     @action(detail=False, methods=['patch'], name='Id')
     def id(self, request):
@@ -213,6 +337,16 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         if serializer.is_valid(raise_exception=True):
             serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    responses = {
+        200: UserProfileSerializer,
+        401: 'Unauthorized user',
+        404: 'Not found: no such user',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Profile"], responses=responses)
 
     # GET /user/{user_id}/profile/
     @action(detail=True, methods=['get'], url_path='profile', url_name='profile')
@@ -225,6 +359,22 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         serializer = UserProfileSerializer(user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    request_body = openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description='user_id'),
+        }
+    )
+    responses = {
+        200: UserProfileSerializer,
+        400: 'Invalid input data',
+        401: 'Unauthorized',
+        405: 'Method not allowed: only PATCH',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Profile"], request_body=request_body, responses=responses)
+
     # PATCH /user/profile/
     @action(detail=False, methods=['patch'], url_path='profile', url_name='profile')
     def patch_profile(self, request):
@@ -235,6 +385,7 @@ class UserInfoViewSet(viewsets.GenericViewSet):
             serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 # Social Login : Kakao
 
 KAKAO_KEY = get_secret("CLIENT_ID")
@@ -244,6 +395,15 @@ REDIRECT_URI = get_secret("REDIRECT_URI")
 class KaKaoSignInView(APIView):
     permission_classes = (permissions.AllowAny,)
 
+    responses = {
+        200: 'redirect to kakao',
+        404: 'Not found',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Kakao"], responses=responses)
+
     def get(self, request):
         kakao_auth_url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
         response = redirect(f'{kakao_auth_url}&client_id={KAKAO_KEY}&redirect_uri={REDIRECT_URI}')
@@ -252,6 +412,15 @@ class KaKaoSignInView(APIView):
 # get access token from kakao api server
 class KakaoCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
+
+    responses = {
+        200: 'redirect to kakao',
+        404: 'Not found',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Kakao"], responses=responses)
 
     def get(self, request):
         # 1. get token
@@ -332,6 +501,22 @@ ADMIN_KEY = get_secret("ADMIN_KEY")
 class KakaoUnlinkView(APIView): # deactivate
     permission_classes = (permissions.IsAuthenticated, )
 
+    request_body = openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'password': openapi.Schema(type=openapi.TYPE_STRING, description='password'),
+        }
+    )
+    responses = {
+        200: 'Successfully deactivate account',
+        400: 'Invalid input data',
+        401: 'Unauthorized',
+        405: 'Method not allowed: only POST',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Kakao"], request_body=request_body, responses=responses)
+
     def post(self, request):
         me = request.user
         if not hasattr(me, 'social_account'):  # TODO add account type checking after google social login
@@ -364,6 +549,7 @@ class KakaoUnlinkView(APIView): # deactivate
         me.delete()
         return Response({'success':True, 'user_id':unlinked_user_id}, status=status.HTTP_200_OK)
 
+
 # Social Login : Google
 GOOGLE_CLIENT_ID = get_secret("GOOGLE_CLIENT_ID")
 GOOGLE_CALLBACK_URI = get_secret("GOOGLE_CALLBACK")
@@ -372,6 +558,15 @@ GOOGLE_SECRET = get_secret("GOOGLE_SECRET")
 class GoogleSignInView(APIView):
     permission_classes = (permissions.AllowAny,)
 
+    responses = {
+        200: 'redirect to google',
+        404: 'Not found',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Google"], responses=responses)
+
     def get(self, request):
         google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
         scope = "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
@@ -379,8 +574,18 @@ class GoogleSignInView(APIView):
         return redirect(
             f"{google_auth_url}?client_id={client_id}&response_type=code&redirect_uri={GOOGLE_CALLBACK_URI}&scope={scope}")
 
+
 class GoogleCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
+
+    responses = {
+        200: 'redirect to google',
+        404: 'Not found',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Google"], responses=responses)
 
     def get(self, request):
         # 1. get token
@@ -445,9 +650,20 @@ class GoogleCallbackView(APIView):
                 return response
             return redirect(FRONT_URL + "oauth/callback/google/?code=null" + "&message=creation failed")
 
+
 class UserRecommendView(APIView):  # recommend random ? users who I don't follow
     queryset = User.objects.all().reverse()
     permission_classes = (permissions.IsAuthenticated,)
+
+    responses = {
+        200: 'Successfully recommend',
+        400: 'Not enough users',
+        401: 'Unauthorized',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Recommend"], responses=responses)
 
     # GET /api/v1/recommend/  TODO: Q. request.user? or specify..?
     def get(self, request):
@@ -460,9 +676,21 @@ class UserRecommendView(APIView):  # recommend random ? users who I don't follow
         serializer = UserRecommendSerializer(unfollowing_users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class FollowRecommendView(APIView):  # recommend random ? users who I don't follow
     queryset = User.objects.all()
     permission_classes = (permissions.IsAuthenticated,)
+
+    responses = {
+        200: 'Successfully recommend',
+        400: 'Not enough users',
+        401: 'Unauthorized',
+        404: 'Not found: no such user exists',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Recommend"], responses=responses)
 
     # GET /api/v1/follow/{pk}/recommend/  tmp
     def get(self, request, pk=None):
@@ -481,9 +709,19 @@ class FollowRecommendView(APIView):  # recommend random ? users who I don't foll
         serializer = UserRecommendSerializer(recommending_users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class SearchPeopleView(APIView, UserListPagination):
     queryset = User.objects.all()
     permission_classes = (permissions.IsAuthenticated,)
+
+    responses = {
+        200: UserInfoSerializer,
+        400: 'Invalid input data: no query provided',
+        405: 'Method not allowed: only GET',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Search"], query_serializer=SearchSerializer, responses=responses)
 
     # GET /api/v1/search/people/
     # include 
@@ -516,3 +754,68 @@ class SearchPeopleView(APIView, UserListPagination):
 
         serializer = UserInfoSerializer(sorted_queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+DOMAIN = get_secret("DOMAIN")
+class SignupEmailSendView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
+
+    request_body = openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description='email'),
+        }
+    )
+    responses = {
+        200: 'Successfully send email',
+        400: 'Invalid input data',
+        401: 'Unauthorized user',
+        405: 'Method not allowed: only POST? GET?',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Verify"], request_body=request_body, responses=responses)
+
+    def post(self, request):
+        # TODO exception when email = null or target_email is someone other's email
+        target_email = request.data.get('email', None)
+        user = request.user
+        domain = "127.0.0.1:8000" if twitter.settings.DEBUG else DOMAIN
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = account_activation_token.make_token(user)
+        message_data = active_message(domain, uidb64, token)
+        mail_title = "[Team2] waffletwitter 가입을 위한 인증 이메일입니다."
+        mail_to = user.email  # default: user's email
+        if target_email is not None:
+            mail_to = target_email
+
+        send_email_task.delay(mail_title, message_data, mail_to) # celery task
+        return Response({"message": "email sent to user"}, status=status.HTTP_200_OK)
+
+
+class EmailActivateView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    # authentication_classes = (CustomJWTAuthentication,)  # unactive user doesn't get error
+
+    responses = {
+        200: 'Successfully verify email',
+        400: 'Auth fail or key error',
+        401: 'Unauthorized user',
+        405: 'Method not allowed: only GET?',
+        500: 'Internal server error'
+    }
+
+    @swagger_auto_schema(tags=["Verify"], responses=responses)
+
+    def get(self, request, uidb64=None, token=None):
+        try:
+            uid = force_text(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+            if user is not None and account_activation_token.check_token(user, token):
+                User.objects.filter(pk=uid).update(is_verified=True)
+                return Response({"message": "email verification success"}, status=status.HTTP_200_OK)  # TODO Q front redirect?
+            return Response({"message": "AUTH_FAIL"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except KeyError:
+            return Response({"message": "KEY_ERROR"}, status=status.HTTP_400_BAD_REQUEST)

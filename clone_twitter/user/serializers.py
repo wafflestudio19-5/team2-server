@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 import re
 from tweet.models import Retweet, Tweet
-from tweet.serializers import TweetSerializer, custom_paginator
+from tweet.serializers import TweetSerializer, custom_paginator, notify
 from user.models import Follow, ProfileMedia
 from django.db.models import Q
 
@@ -27,12 +27,7 @@ class UserCreateSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, allow_blank=True)
     password = serializers.CharField(required=True)
     phone_number = serializers.CharField(required=False, allow_blank=True)
-    profile_img = serializers.ImageField(required=False)  #TODO set to default image
-    kakao_profile = serializers.URLField(required=False)
-    header_img = serializers.ImageField(required=False)
-    bio = serializers.CharField(required=False)
     birth_date = serializers.DateField(required=False)
-    # language = models.PositiveSmallIntegerField(choices=LANGUAGE)
     allow_notification = serializers.BooleanField(required=False, default=True)
     is_social = serializers.BooleanField(required=False, default=False)
 
@@ -71,15 +66,11 @@ class UserCreateSerializer(serializers.Serializer):
         password = validated_data.get('password')
         user_id = validated_data.get('user_id')
         phone_number = validated_data.pop('phone_number', None)
-        profile_img = validated_data.get('profile_img')
-        header_img = validated_data.get('header_img')
-        bio = validated_data.pop('bio', '')
         birth_date = validated_data.get('birth_date')
         allow_notification = validated_data.get('allow_notification')
 
         user = User.objects.create_user(email=email, user_id=user_id, username=username, password=password,
-                                        phone_number=phone_number, profile_img=profile_img, header_img=header_img,
-                                        bio=bio, birth_date=birth_date, allow_notification=allow_notification)
+                                        phone_number=phone_number, birth_date=birth_date, allow_notification=allow_notification)
         return user, jwt_token_of(user)
 
 
@@ -96,7 +87,7 @@ class UserLoginSerializer(serializers.Serializer):
         user = authenticate(user_id=user_id, password=password)
 
         if user is None:
-            raise serializers.ValidationError("user id of password is wrong.")
+            raise serializers.ValidationError("user id or password is wrong.")
 
         update_last_login(None, user)
         return {
@@ -123,7 +114,9 @@ class FollowSerializer(serializers.Serializer):
         follower = self.context['request'].user
         following = User.objects.get(user_id=validated_data['user_id'])
         follow_relation = Follow.objects.create(follower=follower, following=following)
+        notify(follower, following.user_id, None, 'FOLLOW')
         return follow_relation
+
 
 class UserFollowSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='follower.id')
