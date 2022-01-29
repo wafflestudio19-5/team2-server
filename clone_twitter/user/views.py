@@ -728,7 +728,7 @@ class SearchPeopleView(APIView, UserListPagination):
     def get(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = unquote_plus(request.query_params['query']).split()
+        search_keywords = request.query_params['query'].split()
         tag_keywords = ['']
 
         for k in range(len(search_keywords)):
