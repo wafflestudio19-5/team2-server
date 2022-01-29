@@ -26,6 +26,7 @@ from user.models import Follow, User, SocialAccount, ProfileMedia, AuthCode
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
+from user.permissions import IsVerified
 from twitter.authentication import CustomJWTAuthentication
 
 # for email
@@ -176,7 +177,7 @@ class UserDeactivateView(APIView): # deactivate
 
 
 class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
-    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated, IsVerified)  # later change to Isauthenticated
 
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -206,7 +207,7 @@ class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using 
 
 
 class UserUnfollowView(APIView):
-    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated, IsVerified)  # later change to Isauthenticated
 
 
     responses = {

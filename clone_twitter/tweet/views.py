@@ -21,10 +21,11 @@ from tweet.serializers import TweetSearchInfoSerializer, TweetWriteSerializer, R
     LikeSerializer, HomeSerializer, UserListSerializer, custom_paginator, TweetSerializer, QuoteSerializer, \
     SearchSerializer
 from datetime import datetime, timedelta
+from user.permissions import IsVerified
 
 
 class TweetPostView(APIView):      # write tweet
-    permission_classes = (permissions.IsAuthenticated, )
+    permission_classes = (permissions.IsAuthenticated, IsVerified)
 
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -102,7 +103,7 @@ class TweetDetailView(APIView):     # open thread of the tweet
         return Response(status=status.HTTP_200_OK, data={'message': 'successfully delete tweet'})
 
 class ReplyView(APIView):       # reply tweet
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, IsVerified)
 
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -137,7 +138,7 @@ class ReplyView(APIView):       # reply tweet
 
 
 class RetweetView(APIView):       # do retweet
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, IsVerified)
 
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -170,7 +171,7 @@ class RetweetView(APIView):       # do retweet
 
 
 class RetweetCancelView(APIView):     # cancel retweet
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, IsVerified)
 
     responses = {
         200: 'Successfully cancel retweet',
@@ -199,7 +200,7 @@ class RetweetCancelView(APIView):     # cancel retweet
 
 
 class QuoteView(APIView):            # quote-retweet
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, IsVerified)
 
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -234,7 +235,7 @@ class QuoteView(APIView):            # quote-retweet
 
 
 class LikeView(APIView):       # do like
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, IsVerified)
 
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -267,7 +268,7 @@ class LikeView(APIView):       # do like
 
 
 class UnlikeView(APIView):      # cancel like
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, IsVerified)
 
     responses = {
         200: 'Successfully unlike tweet',
