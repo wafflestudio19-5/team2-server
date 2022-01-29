@@ -234,6 +234,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'bio',
             'birth_date',
             'i_follow',
+            'phone_number',
+            'email',
+            'is_verified'
         )
 
     def get_i_follow(self, user):
