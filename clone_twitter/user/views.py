@@ -321,7 +321,7 @@ class KakaoCallbackView(APIView):
                 response = redirect(url)
                 return response
 
-            user = User(user_id=random_id, email=email, username=nickname)
+            user = User(user_id=random_id, email=email, username=nickname, is_verified=True)
             user.set_unusable_password()  # user signed up with kakao can only login via kakao login
             user.save()
 
@@ -442,7 +442,7 @@ class GoogleCallbackView(APIView):
                 return response
 
             with transaction.atomic():
-                user = User(user_id=random_id, email=email, username=username)
+                user = User(user_id=random_id, email=email, username=username, is_verified=True)
                 user.set_unusable_password()  # user signed up with google can only login via kakao login
                 user.save()
                 profile_media = ProfileMedia(image_url=profile_img_url)
@@ -588,7 +588,9 @@ class VerifySMSViewSet(viewsets.GenericViewSet):
         user = request.user
         target_phone_num = user.phone_number
         truncated_p_num = target_phone_num.replace('-', '')
-        code, created = AuthCode.objects.update_or_create(phone_number=target_phone_num)  #TODO same person cannot
+        code, created = AuthCode.objects.get_or_create(phone_number=target_phone_num)  #TODO same person cannot
+        if not created:
+            code.save()
         auth_code = code.auth_code
         result = self.send_sms(truncated_p_num, auth_code)
 
@@ -604,8 +606,10 @@ class VerifySMSViewSet(viewsets.GenericViewSet):
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'missing query params'})
 
         is_verified = AuthCode.check_sms_code(phone_number, submitted_code)
+
         if is_verified:
-            request.user.update(is_verified=True)
+            request.user.is_verified=True
+            request.user.save()
             return Response({"message": "sms verification success"}, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'wrong code'})
 
