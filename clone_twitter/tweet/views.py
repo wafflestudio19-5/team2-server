@@ -210,7 +210,7 @@ class HomeView(APIView):        # home
 
 class TweetSearchViewSet(viewsets.GenericViewSet):
     serializer_class = TweetSearchInfoSerializer
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
     pagination_class = tweet.paginations.TweetListPagination
 
     # GET /search/top/
@@ -218,9 +218,7 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
     def get_top(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = list(filter(lambda x: x!='', unquote_plus(request.query_params['query']).split(' ')))
-
-
+        search_keywords = unquote_plus(request.query_params['query']).split()
         sorted_queryset = \
             Tweet.objects.all() \
             .annotate(num_keywords_included=sum([Case(When(Q(author__username__icontains=keyword) | Q(author__user_id__icontains=keyword) | Q(content__icontains=keyword), then=1), default=0) for keyword in search_keywords]),\
@@ -242,8 +240,7 @@ class TweetSearchViewSet(viewsets.GenericViewSet):
     def get_latest(self, request):
         if not request.query_params:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'no query provided'})
-        search_keywords = list(filter(lambda x: x!='', unquote_plus(request.query_params['query']).split(' ')))
-
+        search_keywords = unquote_plus(request.query_params['query']).split()
         sorted_queryset = \
             Tweet.objects.all() \
             .annotate(num_keywords_included=sum([Case(When(Q(author__username__icontains=keyword) | Q(author__user_id__icontains=keyword) | Q(content__icontains=keyword), then=1), default=0) for keyword in search_keywords])) \
