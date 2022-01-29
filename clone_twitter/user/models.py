@@ -60,6 +60,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number_pattern = RegexValidator(regex=r"[\d]{3}-[\d]{4}-[\d]{4}")  # another option: 1)validation with drf 2)external library
     phone_number = models.CharField(validators=[phone_number_pattern], max_length=14, unique=True, blank=True, null=True)
 
+    # profile related fields
+    # profile_img = models.ImageField(null=True, blank=True, upload_to='profile/')
 
     header_img = models.ImageField(null=True, blank=True, upload_to=profile_media_path) # TODO change
 
@@ -102,8 +104,6 @@ class ProfileMedia(models.Model):
     media = models.ImageField(upload_to=header_media_path)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_img')
     image_url = models.URLField(default=default_profile_img) #only used for social login user / default image
-
-
 
 class AuthCode(models.Model):
     last_update = models.DateTimeField(auto_now=True)
