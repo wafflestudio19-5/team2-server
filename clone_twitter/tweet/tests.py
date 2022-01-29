@@ -971,7 +971,7 @@ class GetSearchTweetTestCase(TestCase):
     def test_get_search_top(self):
         response = self.client.get(
             '/api/v1/search/top/',
-            {'query': r'bb+cc+aa+dd+ee'},
+            {'query': r'bb cc aa dd ee'},
             content_type='application/json',
             HTTP_AUTHORIZATION=self.tokens[0])
 
@@ -989,7 +989,7 @@ class GetSearchTweetTestCase(TestCase):
     def test_get_search_latest(self):
         response = self.client.get(
             '/api/v1/search/latest/',
-            {'query': r'bb+cc+aa+dd%20ee'},
+            {'query': r'bb cc aa dd  ee'},
             content_type='application/json',
             HTTP_AUTHORIZATION=self.tokens[0])
 

@@ -22,12 +22,13 @@ class Notification(models.Model):
         ('LIKE', 'like'),
         ('REPLY', 'reply'),
         ('RETWEET', 'retweet'),
+        ('FOLLOW', 'follow'),
         ('MENTION', 'mention'),
     )
 
     noti_type = models.CharField(choices=TYPE, max_length=10)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notify')
-    tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='notify_in')
+    tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='notify_in', null=True)
     notified = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notified')
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

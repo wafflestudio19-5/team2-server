@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 import re
 from tweet.models import Retweet, Tweet
-from tweet.serializers import TweetSerializer, custom_paginator
+from tweet.serializers import TweetSerializer, custom_paginator, notify
 from user.models import Follow, ProfileMedia
 from django.db.models import Q
 
@@ -114,7 +114,9 @@ class FollowSerializer(serializers.Serializer):
         follower = self.context['request'].user
         following = User.objects.get(user_id=validated_data['user_id'])
         follow_relation = Follow.objects.create(follower=follower, following=following)
+        notify(follower, following.user_id, None, 'FOLLOW')
         return follow_relation
+
 
 class UserFollowSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='follower.id')
