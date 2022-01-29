@@ -1,3 +1,4 @@
+import datetime
 from io import BytesIO
 
 from django.utils.timezone import now
@@ -101,3 +102,31 @@ class ProfileMedia(models.Model):
     media = models.ImageField(upload_to=header_media_path)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_img')
     image_url = models.URLField(default=default_profile_img) #only used for social login user / default image
+
+
+
+class AuthCode(models.Model):
+    last_update = models.DateTimeField(auto_now=True)
+    phone_number = models.CharField(max_length=14, unique=True, null=True)
+    email = models.EmailField(max_length=100, unique=True, null=True)
+    auth_code = models.PositiveIntegerField()
+
+    def save(self, *args, **kwargs):
+        self.auth_code = randint(1000, 10000)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def check_sms_code(cls, phone_number, submitted_code):
+        time_limit = now() - datetime.timedelta(minutes=5)
+        result = cls.objects.filter(phone_number=phone_number, auth_code=submitted_code, last_update__gte=time_limit)
+        if result.exists():
+            return True
+        return False
+
+    @classmethod
+    def check_email_code(cls, email, submitted_code):
+        time_limit = now() - datetime.timedelta(minutes=5)
+        result = cls.objects.filter(email=email, auth_code=submitted_code, last_update__gte=time_limit)
+        if result.exists():
+            return True
+        return False

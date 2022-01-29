@@ -1,10 +1,12 @@
+import base64
+import hmac
 import json
 from multiprocessing.sharedctypes import Value
-import re
+import re, twitter
 from urllib.parse import unquote_plus
 from django.test import tag
 
-import twitter
+import hashlib, hmac, time, requests, sys, os
 import user.paginations
 from django.db.models.expressions import Case, When
 from django.contrib.auth import authenticate
@@ -20,7 +22,7 @@ from drf_yasg import openapi
 from user.serializers import UserCreateSerializer, UserInfoSerializer, UserLoginSerializer, FollowSerializer, UserFollowSerializer, UserFollowingSerializer, UserProfileSerializer, UserSearchInfoSerializer, jwt_token_of, UserRecommendSerializer
 from django.db import IntegrityError, transaction
 from django.db.models import Q, Count
-from user.models import Follow, User, SocialAccount, ProfileMedia
+from user.models import Follow, User, SocialAccount, ProfileMedia, AuthCode
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
@@ -478,7 +480,7 @@ class KakaoCallbackView(APIView):
                 response = redirect(url)
                 return response
 
-            user = User(user_id=random_id, email=email, username=nickname)
+            user = User(user_id=random_id, email=email, username=nickname, is_verified=True)
             user.set_unusable_password()  # user signed up with kakao can only login via kakao login
             user.save()
 
@@ -635,7 +637,7 @@ class GoogleCallbackView(APIView):
                 return response
 
             with transaction.atomic():
-                user = User(user_id=random_id, email=email, username=username)
+                user = User(user_id=random_id, email=email, username=username, is_verified=True)
                 user.set_unusable_password()  # user signed up with google can only login via kakao login
                 user.save()
                 profile_media = ProfileMedia(image_url=profile_img_url)
@@ -819,3 +821,87 @@ class EmailActivateView(APIView):
 
         except KeyError:
             return Response({"message": "KEY_ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+ACCESS_KEY = get_secret("NAVER_ACCESS_ID")
+NAVER_SECRET = get_secret("NAVER_SECRET")
+TEAM2_PHONE = get_secret("TEAM2_PHONE")
+SERVICE_ID = get_secret("SERVICE_ID")
+
+class VerifySMSViewSet(viewsets.GenericViewSet):
+
+    @action(detail=False, methods=['POST', 'PUT'], url_path='sms', url_name='sms')
+    def verify_sms(self, request):
+        if request.method == 'POST':
+            return self.send_code(request)
+        elif request.method == 'PUT':
+            return self.check_code(request)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def send_code(self, request):
+        user = request.user
+        target_phone_num = user.phone_number
+        truncated_p_num = target_phone_num.replace('-', '')
+        code, created = AuthCode.objects.get_or_create(phone_number=target_phone_num)  #TODO same person cannot
+        if not created:
+            code.save()
+        auth_code = code.auth_code
+        result = self.send_sms(truncated_p_num, auth_code)
+
+        if result == 'fail':
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'failed to send SMS'})
+        return Response(status=status.HTTP_200_OK, data={'message': 'SMS sent to user'})
+
+    def check_code(self, request):
+        phone_number = request.data.get('phone_number', None)
+        submitted_code = request.data.get('auth_code', None)
+
+        if not phone_number or not submitted_code:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'missing query params'})
+
+        is_verified = AuthCode.check_sms_code(phone_number, submitted_code)
+
+        if is_verified:
+            request.user.is_verified=True
+            request.user.save()
+            return Response({"message": "sms verification success"}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'wrong code'})
+
+
+    def make_signature(self, uri, timestamp):
+        secret_key = bytes(NAVER_SECRET, 'UTF-8')
+        message = "POST " + uri + "\n" + timestamp + "\n" + ACCESS_KEY
+        message = bytes(message, 'UTF-8')
+        signingKey = base64.b64encode(hmac.new(secret_key, message, digestmod=hashlib.sha256).digest())
+        return signingKey
+
+
+    def send_sms(self, phone_number, auth_code):
+        timestamp = str(int(time.time() * 1000))
+        uri = f'/sms/v2/services/{SERVICE_ID}/messages'
+        url = f'https://sens.apigw.ntruss.com/sms/v2/services/{SERVICE_ID}/messages'
+
+        data = {
+            "type": "SMS",
+            "contentType": "COMM",
+            "countryCode": "82",
+            "from": "01099713633",
+            "content": f"[Team2] WaffleTwitter 인증 번호 [{auth_code}]를 입력해주세요.",
+            "messages": [
+                {
+                    "to": phone_number,
+                    "subject": "string",
+                    "content": "",
+                }
+            ],
+        }
+
+        headers = {
+            "Content-Type": 'application/json; charset=utf-8',
+            "x-ncp-apigw-timestamp": timestamp,
+            "x-ncp-iam-access-key": ACCESS_KEY,
+            "x-ncp-apigw-signature-v2": self.make_signature(uri, timestamp),
+        }
+        response = requests.post(url, json=data, headers=headers)
+        response = response.json()
+        return response['statusName']
