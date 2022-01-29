@@ -26,6 +26,7 @@ from user.models import Follow, User, SocialAccount, ProfileMedia, AuthCode
 import requests
 from twitter.settings import get_secret, FRONT_URL
 from user.paginations import UserListPagination
+from user.permissions import IsVerified
 from twitter.authentication import CustomJWTAuthentication
 
 # for email
@@ -176,7 +177,7 @@ class UserDeactivateView(APIView): # deactivate
 
 
 class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using viewset
-    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated, IsVerified)  # later change to Isauthenticated
 
     request_body = openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -206,7 +207,7 @@ class UserFollowView(APIView): # TODO: refactor to separate views.. maybe using 
 
 
 class UserUnfollowView(APIView):
-    permission_classes = (permissions.IsAuthenticated,)  # later change to Isauthenticated
+    permission_classes = (permissions.IsAuthenticated, IsVerified)  # later change to Isauthenticated
 
 
     responses = {
@@ -840,9 +841,11 @@ class VerifySMSViewSet(viewsets.GenericViewSet):
 
     def send_code(self, request):
         user = request.user
+        if not user.phone_number:
+            return Response(status=status.HTTP_400_BAD_REQUEST , data={'message': 'this user doen not have phone_num'})
         target_phone_num = user.phone_number
         truncated_p_num = target_phone_num.replace('-', '')
-        code, created = AuthCode.objects.get_or_create(phone_number=target_phone_num)  #TODO same person cannot
+        code, created = AuthCode.objects.get_or_create(phone_number=target_phone_num)
         if not created:
             code.save()
         auth_code = code.auth_code
@@ -867,6 +870,43 @@ class VerifySMSViewSet(viewsets.GenericViewSet):
             return Response({"message": "sms verification success"}, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'wrong code'})
 
+    @action(detail=False, methods=['POST', 'PUT'], url_path='email', url_name='email')
+    def verify_sms(self, request):
+        if request.method == 'POST':
+            return self.send_email_code(request)
+        elif request.method == 'PUT':
+            return self.check_email_code(request)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def send_email_code(self, request):
+        user = request.user
+        if not user.email:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'this user does not have email'})
+        target_email = user.email
+        code, created = AuthCode.objects.get_or_create(email=target_email)
+        if not created:
+            code.save()
+        auth_code = code.auth_code
+        message_data = f"[Team2] Twiffle 인증 번호 [{auth_code}]를 입력해주세요."
+        mail_title = "[Team2] Twiffle 가입을 위한 인증 이메일입니다."
+
+        send_email_task.delay(mail_title, message_data, target_email)  # celery task
+        return Response({"message": "email sent to user"}, status=status.HTTP_200_OK)
+
+    def check_email_code(self, request):
+        email = request.data.get('email', None)
+        submitted_code = request.data.get('auth_code', None)
+
+        if not email or not submitted_code:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'missing query params'})
+
+        is_verified = AuthCode.check_email_code(email, submitted_code)
+
+        if is_verified:
+            request.user.is_verified = True
+            request.user.save()
+            return Response({"message": "email verification success"}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST, data={'message': 'wrong code'})
 
     def make_signature(self, uri, timestamp):
         secret_key = bytes(NAVER_SECRET, 'UTF-8')
@@ -885,7 +925,7 @@ class VerifySMSViewSet(viewsets.GenericViewSet):
             "type": "SMS",
             "contentType": "COMM",
             "countryCode": "82",
-            "from": "01099713633",
+            "from": TEAM2_PHONE,
             "content": f"[Team2] WaffleTwitter 인증 번호 [{auth_code}]를 입력해주세요.",
             "messages": [
                 {
